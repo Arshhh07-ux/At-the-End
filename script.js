@@ -1,1398 +1,1060 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const startBtn = document.getElementById("startBtn");
+"use strict";
 
-    startBtn.addEventListener("click", function () {
-        startGame();
-    });
-});
-document.addEventListener("DOMContentLoaded", function () {
-
-    const startBtn = document.getElementById("startBtn");
-
-    startBtn.addEventListener("click", function () {
-
-        const nameInput = document.getElementById("nameInput");
-        const name = nameInput.value.trim();
-
-        if (name === "") {
-            alert("पहले अपना नाम लिखो!");
-            nameInput.focus();
-            return;
-        }
-
-        game.name = name;
-
-        document.getElementById("storyText").innerText =
-        `तुम, ${name}, रात की आख़िरी ट्रेन पकड़ते हो।
-
-टिकट पर लिखा है कि ट्रेन तुम्हें एक ऐसे स्टेशन पर ले जाएगी जिसका नाम तुमने कभी नहीं सुना।
-
-ट्रेन चलने से पहले एक बूढ़ा आदमी तुम्हें देखकर कहता है:
-
-“अगर घंटी तीन बार बजे… पीछे मत देखना।”
-
-कुछ ही सेकंड बाद ट्रेन चल पड़ती है।`;
-
-        document.getElementById("startScreen").classList.add("hidden");
-        document.getElementById("storyScreen").classList.remove("hidden");
-
-    });
-
-});
-/* =====================================================
-   अंतिम सफ़र
-   Original Hindi Horror Train Game
-===================================================== */
-
-
-/* ---------- GAME STATE ---------- */
+/* =========================
+   GAME DATA
+========================= */
 
 let game = {
+    playerName: "",
+    coach: 1,
+    health: 100,
+    fear: 0,
+    battery: 100,
+    stamina: 100,
 
-    name:"",
+    difficulty: "normal",
 
-    coach:1,
-
-    health:100,
-
-    fear:0,
-
-    battery:100,
-
-    events:0,
-
-    choices:0,
-
-    difficulty:"normal",
-
-    flags:{},
-
-    inventory:[
-
-        {
-            id:"ticket",
-            name:"पुराना टिकट 🎫",
-            desc:"इस पर तुम्हारा नाम लिखा है।"
-        },
-
-        {
-            id:"phone",
-            name:"फोन 📱",
-            desc:"Network नहीं है।"
-        },
-
-        {
-            id:"flashlight",
-            name:"टॉर्च 🔦",
-            desc:"अंधेरे में रास्ता दिखाती है।"
-        }
-
+    items: [
+        "📱 पुराना फोन",
+        "🔦 टॉर्च",
+        "🎫 ट्रेन टिकट"
     ],
 
-    messages:[
+    clues: 0,
+    events: 0,
+    playedMinutes: 0,
 
-        {
-            who:"सिस्टम",
-            text:"Network उपलब्ध नहीं है।"
-        }
-
+    messages: [
+        "अज्ञात नंबर: अभी मत सोना।",
+        "अज्ञात नंबर: तुम जिस ट्रेन में हो… वह सामान्य ट्रेन नहीं है।"
     ]
-
 };
 
 
-/* ---------- COACHES ---------- */
+/* =========================
+   HELPER
+========================= */
 
-const coaches = {
-
-1:{
-    name:"Coach 1 — Sleeper",
-    description:"कुछ यात्री सो रहे हैं। सब सामान्य लगता है।",
-    mission:"Coach 3 तक पहुँचो।"
-},
-
-2:{
-    name:"Coach 2 — Sleeper",
-    description:"यह coach बाकी ट्रेन से बहुत शांत है।",
-    mission:"दीवार पर लिखे संदेश को पढ़ो।"
-},
-
-3:{
-    name:"Coach 3 — Sleeper",
-    description:"सीट के नीचे कुछ दिखाई दे रहा है।",
-    mission:"पुराना टिकट जाँचो।"
-},
-
-4:{
-    name:"Coach 4 — खाली",
-    description:"इस coach में एक भी passenger नहीं है।",
-    mission:"आवाज़ का पीछा करो।"
-},
-
-5:{
-    name:"Coach 5 — Pantry",
-    description:"बंद pantry से बर्तनों की आवाज़ आ रही है।",
-    mission:"Pantry का दरवाज़ा जाँचो।"
-},
-
-6:{
-    name:"Coach 6 — अजनबी",
-    description:"एक बूढ़ा आदमी तुम्हें लगातार देख रहा है।",
-    mission:"उससे बात करो।"
-},
-
-7:{
-    name:"Coach 7 — अँधेरा",
-    description:"Emergency lights बार-बार बंद हो रही हैं।",
-    mission:"टॉर्च जलाकर आगे बढ़ो।"
-},
-
-8:{
-    name:"Coach 8 — ???",
-    description:"यह coach train के नक्शे में है ही नहीं।",
-    mission:"अंतिम निर्णय लो।"
-}
-
-};
-
-
-/* ---------- HORROR EVENTS ---------- */
-
-const events = [
-
-{
-title:"आईने में कोई",
-
-text:
-"खिड़की के शीशे में तुम्हारे पीछे एक आदमी दिखाई देता है। तुम मुड़ते हो… वहाँ कोई नहीं है।",
-
-fear:12,
-
-visual:"eyes"
-},
-
-{
-title:"दरवाज़े पर दस्तक",
-
-text:
-"ठक… ठक… ठक… दरवाज़े के दूसरी तरफ से कोई तुम्हारा नाम पुकार रहा है।",
-
-fear:10,
-
-visual:"ghost"
-},
-
-{
-title:"अजीब Announcement",
-
-text:
-`स्पीकर अचानक चालू होता है — “यात्री {name}, कृपया Coach 13 में आएँ।” लेकिन ट्रेन में Coach 13 है ही नहीं।`,
-
-fear:15,
-
-visual:"none"
-},
-
-{
-title:"पुरानी तस्वीर",
-
-text:
-"सीट के नीचे एक तस्वीर मिली। उसमें यही ट्रेन है। पीछे खड़ा आदमी बिल्कुल तुम्हारे जैसा दिखता है।",
-
-fear:14,
-
-visual:"ghost"
-},
-
-{
-title:"गीले पदचिह्न",
-
-text:
-"फर्श पर गीले पदचिह्न हैं। वे तुम्हारी तरफ आ रहे हैं… फिर अचानक गायब हो जाते हैं।",
-
-fear:8,
-
-visual:"none"
-},
-
-{
-title:"घड़ी 2:17 पर रुक गई",
-
-text:
-"ट्रेन की घड़ी 2:17 पर रुक गई। कुछ सेकंड के लिए train की सारी आवाज़ें बंद हो गईं।",
-
-fear:16,
-
-visual:"none"
-},
-
-{
-title:"Unknown Message",
-
-text:
-"तुम्हारा फोन vibrate करता है। Message आया है: “पीछे मत देखना, {name}।”",
-
-fear:18,
-
-visual:"none"
-},
-
-{
-title:"खिड़की के बाहर",
-
-text:
-"एक काली परछाईं train के साथ दौड़ रही है। अचानक वह तुम्हारी खिड़की के सामने रुक जाती है।",
-
-fear:20,
-
-visual:"ghost"
-},
-
-{
-title:"खाली सीट",
-
-text:
-"एक passenger अभी यहाँ बैठा था। अब सीट खाली है। सिर्फ एक गर्म चाय का कप बचा है।",
-
-fear:9,
-
-visual:"none"
-},
-
-{
-title:"पुरानी Recording",
-
-text:
-"स्पीकर से बहुत पुरानी recording चलती है। उसमें accident से पहले की चीखें सुनाई देती हैं।",
-
-fear:17,
-
-visual:"eyes"
-}
-
-];
-
-
-/* ---------- BASIC FUNCTIONS ---------- */
-
-function id(x){
-    return document.getElementById(x);
+function $(id) {
+    return document.getElementById(id);
 }
 
 
-function clamp(value,min,max){
-    return Math.max(min,Math.min(max,value));
+function show(id) {
+    $(id).classList.remove("hidden");
 }
 
 
-function startGame(){
+function hide(id) {
+    $(id).classList.add("hidden");
+}
 
-    let name =
-        id("nameInput").value.trim();
 
-    if(!name){
+/* =========================
+   START GAME
+========================= */
 
-        id("nameInput").focus();
+document.addEventListener("DOMContentLoaded", function () {
+
+    const startBtn = $("startBtn");
+
+    if (startBtn) {
+        startBtn.addEventListener("click", startGame);
+    }
+
+
+    const boardBtn = $("boardBtn");
+
+    if (boardBtn) {
+        boardBtn.addEventListener("click", beginJourney);
+    }
+
+
+    $("leftBtn").addEventListener("click", function () {
+        moveCoach(-1);
+    });
+
+
+    $("rightBtn").addEventListener("click", function () {
+        moveCoach(1);
+    });
+
+
+    $("interactBtn").addEventListener("click", interact);
+
+
+    $("inventoryBtn").addEventListener(
+        "click",
+        openInventory
+    );
+
+
+    $("phoneBtn").addEventListener(
+        "click",
+        openPhone
+    );
+
+
+    $("settingsBtn").addEventListener(
+        "click",
+        function () {
+            openPopup("settings");
+        }
+    );
+
+
+    $("saveBtn").addEventListener(
+        "click",
+        saveGame
+    );
+
+
+    $("loadBtn").addEventListener(
+        "click",
+        loadGame
+    );
+
+
+    $("newGameBtn").addEventListener(
+        "click",
+        newGame
+    );
+
+
+    $("restartBtn").addEventListener(
+        "click",
+        function () {
+            location.reload();
+        }
+    );
+
+
+    document.querySelectorAll(".close").forEach(
+        function (button) {
+
+            button.addEventListener(
+                "click",
+                function () {
+
+                    const popup =
+                        button.getAttribute("data-close");
+
+                    closePopup(popup);
+                }
+            );
+
+        }
+    );
+
+
+    $("difficulty").addEventListener(
+        "change",
+        function () {
+
+            game.difficulty =
+                this.value;
+
+        }
+    );
+
+
+    /* KEYBOARD */
+
+    document.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (
+                event.key === "ArrowLeft" ||
+                event.key.toLowerCase() === "a"
+            ) {
+                moveCoach(-1);
+            }
+
+            if (
+                event.key === "ArrowRight" ||
+                event.key.toLowerCase() === "d"
+            ) {
+                moveCoach(1);
+            }
+
+            if (event.key.toLowerCase() === "e") {
+                interact();
+            }
+
+            if (event.key.toLowerCase() === "i") {
+                openInventory();
+            }
+
+            if (event.key.toLowerCase() === "p") {
+                openPhone();
+            }
+
+        }
+    );
+
+});
+
+
+/* =========================
+   START
+========================= */
+
+function startGame() {
+
+    const name =
+        $("nameInput").value.trim();
+
+
+    if (name.length === 0) {
+
+        $("startError").textContent =
+            "⚠️ पहले अपना नाम लिखें।";
+
+        $("nameInput").focus();
 
         return;
     }
 
-    game.name=name;
 
-    id("storyText").innerText=
+    game.playerName = name;
 
-    `तुम, ${name}, रात की आख़िरी ट्रेन पकड़ते हो।
 
-टिकट पर लिखा है कि ट्रेन तुम्हें एक ऐसे स्टेशन पर ले जाएगी जिसका नाम तुमने कभी नहीं सुना।
+    $("playerName").textContent =
+        name;
 
-ट्रेन चलने से पहले एक बूढ़ा आदमी तुम्हें देखकर कहता है:
 
-“अगर घंटी तीन बार बजे… पीछे मत देखना।”
+    $("storyText").textContent =
+        `रात के 11:47 बजे ${name} प्लेटफ़ॉर्म 6 पर अकेला खड़ा था। बारिश तेज़ थी। स्टेशन लगभग खाली था। अचानक एक पुरानी ट्रेन बिना किसी घोषणा के प्लेटफ़ॉर्म पर आकर रुकी। ट्रेन के दरवाज़े अपने आप खुल गए। अंदर से किसी ने धीरे से कहा — “चढ़ो…”`;
 
-कुछ ही सेकंड बाद ट्रेन चल पड़ती है।`;
 
-    id("startScreen").classList.add("hidden");
+    hide("startScreen");
 
-    id("storyScreen").classList.remove("hidden");
+    show("storyScreen");
+
+
+    $("startError").textContent = "";
 }
 
 
-function beginJourney(){
+/* =========================
+   BOARD TRAIN
+========================= */
 
-    id("storyScreen").classList.add("hidden");
+function beginJourney() {
 
-    id("gameScreen").classList.remove("hidden");
+    hide("storyScreen");
+
+    show("gameScreen");
+
 
     updateUI();
 
+
     setEvent(
-
+        "पहली रात",
         "ट्रेन चल पड़ी…",
-
-        "बाहर बारिश हो रही है। कुछ यात्री सो रहे हैं। लेकिन तुम्हें महसूस होता है कि कोई तुम्हें देख रहा है।",
-
-        "रात का सफ़र"
-
+        `तुम ट्रेन में चढ़ चुके हो। ${game.playerName}, बाहर अब स्टेशन दिखाई नहीं दे रहा। खिड़की के बाहर सिर्फ अंधेरा और बारिश है।`
     );
 
-    setTimeout(randomEvent,5000);
+
+    setMission(
+        "Coach 3 तक पहुँचो।"
+    );
+
+
+    setTimeout(
+        randomEvent,
+        5000
+    );
 }
 
 
-/* ---------- UI ---------- */
+/* =========================
+   UI
+========================= */
 
-function updateUI(){
+function updateUI() {
 
-    id("playerName").innerText=game.name;
+    $("playerName").textContent =
+        game.playerName || "यात्री";
 
-    id("coachName").innerText=
-        " • "+coaches[game.coach].name;
 
-    id("health").innerText=
-        Math.round(game.health);
+    $("coachName").textContent =
+        " • Coach " + game.coach;
 
-    id("fear").innerText=
-        Math.round(game.fear);
 
-    id("battery").innerText=
-        Math.round(game.battery);
+    $("health").textContent =
+        Math.max(0, game.health);
 
-    id("doorText").innerText=
-        "COACH "+game.coach;
 
-    id("missionText").innerText=
-        coaches[game.coach].mission;
+    $("fear").textContent =
+        Math.min(100, game.fear);
+
+
+    $("battery").textContent =
+        Math.max(0, game.battery);
+
+
+    $("doorText").textContent =
+        "COACH " + game.coach;
+
 
     renderInventory();
+
+    renderMessages();
 }
 
 
-/* ---------- EVENT DISPLAY ---------- */
+function setEvent(tag, title, text) {
 
-function setEvent(title,text,tag="घटना",choices=[]){
+    $("eventTag").textContent = tag;
 
-    id("eventTitle").innerText=title;
+    $("eventTitle").textContent = title;
 
-    id("eventText").innerText=
-        text.replaceAll("{name}",game.name);
+    $("eventText").textContent = text;
 
-    id("eventTag").innerText=tag;
+    $("choices").innerHTML = "";
 
-    id("choices").innerHTML="";
-
-    choices.forEach(choice=>{
-
-        let button=
-            document.createElement("button");
-
-        button.className="choice";
-
-        button.innerText=choice.text;
-
-        button.onclick=()=>{
-
-            game.choices++;
-
-            choice.action();
-
-            updateUI();
-
-        };
-
-        id("choices").appendChild(button);
-
-    });
-
+    hideGhost();
 }
 
 
-/* ---------- VISUAL HORROR ---------- */
+function setMission(text) {
 
-function visual(type){
-
-    id("ghost").classList.remove("show");
-
-    id("eyes").classList.remove("show");
-
-    if(type==="ghost"){
-
-        id("ghost").classList.add("show");
-
-    }
-
-    if(type==="eyes"){
-
-        id("eyes").classList.add("show");
-
-    }
-
-    id("visual").classList.remove("shake");
-
-    void id("visual").offsetWidth;
-
-    if(type!=="none"){
-
-        id("visual").classList.add("shake");
-
-    }
+    $("missionText").textContent =
+        text;
 }
 
 
-/* ---------- RANDOM HORROR ---------- */
+/* =========================
+   COACH MOVEMENT
+========================= */
 
-function randomEvent(){
+function moveCoach(direction) {
 
-    if(id("endingScreen").classList.contains("hidden")===false){
+    if (!$("gameScreen") ||
+        $("gameScreen").classList.contains("hidden")) {
+        return;
+    }
+
+
+    const newCoach =
+        game.coach + direction;
+
+
+    if (newCoach < 1) {
+
+        setEvent(
+            "दरवाज़ा",
+            "आगे नहीं जा सकते",
+            "तुम ट्रेन की शुरुआत पर हो। पीछे जाने का कोई रास्ता नहीं है।"
+        );
 
         return;
+    }
+
+
+    if (newCoach > 8) {
+
+        setEvent(
+            "आख़िरी डिब्बा",
+            "रास्ता खत्म हो गया",
+            "इसके आगे कोई Coach नहीं है। लेकिन दूर से किसी के चलने की आवाज़ आ रही है…"
+        );
+
+        game.fear += 5;
+
+        updateUI();
+
+        return;
+    }
+
+
+    game.coach = newCoach;
+
+    game.playedMinutes += 2;
+
+    game.battery =
+        Math.max(0, game.battery - 2);
+
+
+    updateUI();
+
+
+    if (game.coach === 3) {
+
+        setMission(
+            "Coach 5 में छुपा हुआ टिकट खोजो।"
+        );
 
     }
+
+
+    if (game.coach === 5) {
+
+        setMission(
+            "पुराना टिकट खोजने के लिए Interact दबाओ।"
+        );
+
+    }
+
+
+    if (game.coach === 8) {
+
+        setMission(
+            "आख़िरी दरवाज़े तक पहुँचो।"
+        );
+
+    }
+
+
+    setEvent(
+        "Coach " + game.coach,
+        "तुम आगे बढ़ गए…",
+        getCoachDescription(game.coach)
+    );
+
+
+    if (Math.random() < .45) {
+
+        setTimeout(
+            randomEvent,
+            1500
+        );
+
+    }
+}
+
+
+/* =========================
+   COACH DESCRIPTIONS
+========================= */
+
+function getCoachDescription(coach) {
+
+    const descriptions = {
+
+        1:
+            "कुछ यात्री चुपचाप बैठे हैं। एक बूढ़ा आदमी तुम्हें लगातार देख रहा है।",
+
+        2:
+            "यह डिब्बा लगभग खाली है। ऊपर वाली berth से किसी के साँस लेने की आवाज़ आ रही है।",
+
+        3:
+            "एक बच्चा खिड़की के पास बैठा है। वह बाहर नहीं, बल्कि काले शीशे में तुम्हारा प्रतिबिंब देख रहा है।",
+
+        4:
+            "लाइट बार-बार झपक रही है। हर बार अंधेरा होने पर सीटों की संख्या बदल जाती है।",
+
+        5:
+            "यहाँ हवा बहुत ठंडी है। एक सीट पर पुराना टिकट पड़ा हुआ दिखाई देता है।",
+
+        6:
+            "पूरा डिब्बा खाली है। लेकिन ऊपर की berth धीरे-धीरे हिल रही है।",
+
+        7:
+            "फोन में अचानक network की एक line दिखाई देती है… फिर गायब हो जाती है।",
+
+        8:
+            "आख़िरी डिब्बा। सामने एक दरवाज़ा है जिस पर लिखा है — 'वापस मत जाना।'"
+    };
+
+
+    return descriptions[coach] ||
+        "डिब्बे में अजीब सन्नाटा है।";
+}
+
+
+/* =========================
+   INTERACT
+========================= */
+
+function interact() {
+
+    if ($("gameScreen").classList.contains("hidden")) {
+        return;
+    }
+
 
     game.events++;
 
-    let event=
-        events[
+
+    /* Coach 5 clue */
+
+    if (game.coach === 5 &&
+        !game.items.includes("🎫 पुराना टिकट")) {
+
+        game.items.push(
+            "🎫 पुराना टिकट"
+        );
+
+        game.clues++;
+
+
+        setEvent(
+            "रहस्य",
+            "पुराना टिकट मिला",
+            "टिकट पर आज की तारीख नहीं है। उस पर 1998 लिखा है। लेकिन ट्रेन के बाहर अभी 2026 चल रहा है।"
+        );
+
+
+        setMission(
+            "अब Coach 7 में फोन चालू करो।"
+        );
+
+
+        updateUI();
+
+        return;
+    }
+
+
+    /* Coach 7 */
+
+    if (game.coach === 7) {
+
+        game.battery =
+            Math.max(0, game.battery - 5);
+
+        game.fear += 10;
+
+
+        showGhost();
+
+
+        setEvent(
+            "फोन",
+            "अज्ञात संदेश",
+            "फोन की स्क्रीन अपने आप जलती है। संदेश आता है: “तुम्हारा नाम मुझे पता है, " +
+            game.playerName +
+            "…”"
+        );
+
+
+        if (
+            !game.messages.includes(
+                "अज्ञात नंबर: तुम्हारा नाम मुझे पता है।"
+            )
+        ) {
+
+            game.messages.push(
+                "अज्ञात नंबर: तुम्हारा नाम मुझे पता है।"
+            );
+
+        }
+
+
+        setMission(
+            "Coach 8 के आख़िरी दरवाज़े तक जाओ।"
+        );
+
+
+        updateUI();
+
+        return;
+    }
+
+
+    /* Coach 8 ending */
+
+    if (game.coach === 8) {
+
+        if (game.clues >= 1) {
+
+            trueEnding();
+
+        } else {
+
+            lostEnding();
+
+        }
+
+        return;
+    }
+
+
+    /* Normal interaction */
+
+    const actions = [
+
+        "तुमने सीट के नीचे देखा… वहाँ कुछ नहीं था।",
+
+        "खिड़की पर किसी ने अंदर से हाथ रखा था। तुमने हाथ हटाया तो निशान गायब हो गया।",
+
+        "ऊपर की berth खाली थी। फिर भी चादर किसी के लेटे होने की तरह दब रही थी।",
+
+        "दरवाज़े के पीछे से किसी बच्चे की हँसी सुनाई दी।",
+
+        "तुम्हें लगा किसी ने तुम्हारा नाम पुकारा।",
+
+        "ट्रेन अचानक धीमी हुई… फिर सामान्य गति से चलने लगी।"
+
+    ];
+
+
+    const text =
+        actions[
             Math.floor(
-                Math.random()*events.length
+                Math.random() * actions.length
             )
         ];
 
-    let multiplier=
-        game.difficulty==="nightmare"
-        ?1.4
-        :1;
 
-    game.fear=
-        clamp(
-            game.fear+(event.fear*multiplier),
-            0,
-            100
-        );
+    game.fear += 4;
 
-    visual(event.visual);
+
+    if (Math.random() < .25) {
+        game.health -= 5;
+    }
+
 
     setEvent(
+        "जाँच",
+        "तुमने ध्यान से देखा…",
+        text
+    );
 
+
+    updateUI();
+
+
+    checkHealth();
+}
+
+
+/* =========================
+   RANDOM HORROR
+========================= */
+
+function randomEvent() {
+
+    if (
+        $("gameScreen").classList.contains("hidden")
+    ) {
+        return;
+    }
+
+
+    const events = [
+
+        {
+            title: "किसी ने पीछे से पुकारा",
+            text:
+                `“${game.playerName}…” आवाज़ तुम्हारे ठीक पीछे से आई। लेकिन वहाँ कोई नहीं था।`
+        },
+
+        {
+            title: "लाइट बंद हो गई",
+            text:
+                "पूरा Coach पाँच सेकंड के लिए अंधेरे में डूब गया। अंधेरे में किसी के चलने की आवाज़ आई।"
+        },
+
+        {
+            title: "खिड़की",
+            text:
+                "बारिश के बीच खिड़की पर एक चेहरा दिखाई दिया। ट्रेन पूरी गति से चल रही है… फिर वह चेहरा गायब हो गया।"
+        },
+
+        {
+            title: "घोषणा",
+            text:
+                "स्पीकर से आवाज़ आई — “अगला स्टेशन… अंतिम स्टेशन…” फिर speaker बंद हो गया।"
+        },
+
+        {
+            title: "खाली सीट",
+            text:
+                "तुमने सामने वाली सीट देखी। वह खाली थी। एक पल बाद वहाँ कोई बैठा था।"
+        }
+
+    ];
+
+
+    const event =
+        events[
+            Math.floor(
+                Math.random() * events.length
+            )
+        ];
+
+
+    game.fear +=
+        game.difficulty === "nightmare"
+            ? 15
+            : 8;
+
+
+    showGhost();
+
+
+    setEvent(
+        "⚠️ अजीब घटना",
         event.title,
-
-        event.text,
-
-        "असामान्य घटना",
-
-        [
-
-            {
-                text:"🔦 टॉर्च से देखो",
-
-                action:()=>{
-
-                    if(game.battery>0){
-
-                        game.battery=
-                            clamp(
-                                game.battery-12,
-                                0,
-                                100
-                            );
-
-                        setEvent(
-
-                            "कुछ नहीं…",
-
-                            "टॉर्च की रोशनी घूमती है। वहाँ कुछ भी नहीं है। फिर पीछे से बहुत धीमी हँसी सुनाई देती है।",
-
-                            "जाँच"
-
-                        );
-
-                    }else{
-
-                        setEvent(
-
-                            "बैटरी खत्म",
-
-                            "टॉर्च नहीं जल रही। अंधेरे में कोई धीरे से तुम्हारा नाम बोलता है।",
-
-                            "अँधेरा"
-
-                        );
-
-                    }
-
-                }
-
-            },
-
-            {
-
-                text:"🚪 आगे बढ़ो",
-
-                action:()=>{
-
-                    game.fear=
-                        clamp(
-                            game.fear-3,
-                            0,
-                            100
-                        );
-
-                    setEvent(
-
-                        "तुम आगे बढ़ते हो…",
-
-                        "तुमने पीछे नहीं देखा। शायद यही सही फैसला था।",
-
-                        "सफ़र"
-
-                    );
-
-                }
-
-            }
-
-        ]
-
+        event.text
     );
 
-    updateUI();
-
-}
-
-
-/* ---------- MOVE ---------- */
-
-function moveCoach(direction){
-
-    game.coach=
-        clamp(
-            game.coach+direction,
-            1,
-            8
-        );
-
-    game.fear=
-        clamp(
-            game.fear+2,
-            0,
-            100
-        );
 
     updateUI();
 
 
-    /* COACH 3 */
-
-    if(
-        game.coach===3 &&
-        !game.flags.ticket
-    ){
-
-        game.flags.ticket=true;
-
-        setEvent(
-
-            "Coach 3",
-
-            `सीट के नीचे एक पुराना टिकट है।
-
-उस पर नाम लिखा है:
-
-“${game.name}”
-
-लेकिन सबसे नीचे लिखा है:
-
-“समय: 2:17 AM”`,
-
-            "मुख्य सुराग",
-
-            [
-
-                {
-
-                    text:"🎫 टिकट उठाओ",
-
-                    action:()=>{
-
-                        game.inventory.push({
-
-                            id:"oldPhoto",
-
-                            name:"पुरानी तस्वीर 📷",
-
-                            desc:"पीछे लिखा है: Coach 8 तक मत जाना।"
-
-                        });
-
-                        setEvent(
-
-                            "टिकट के पीछे…",
-
-                            "पीछे लिखा है: “जिसने यह पढ़ लिया, वह पहले ही इस ट्रेन का हिस्सा बन चुका है।”",
-
-                            "रहस्य"
-
-                        );
-
-                    }
-
-                },
-
-                {
-
-                    text:"इसे छोड़ दो",
-
-                    action:()=>{
-
-                        game.fear=
-                            clamp(
-                                game.fear+10,
-                                0,
-                                100
-                            );
-
-                        setEvent(
-
-                            "पीछे से आवाज़",
-
-                            "तुम जाने लगते हो। कोई फुसफुसाता है — “उठा लो…”",
-
-                            "चेतावनी"
-
-                        );
-
-                    }
-
-                }
-
-            ]
-
-        );
-
-        return;
-    }
-
-
-    /* COACH 2 */
-
-    if(game.coach===2){
-
-        setEvent(
-
-            "दीवार पर लिखा है",
-
-            `${game.name}, अगर तुम यह पढ़ रहे हो तो समय बहुत कम है।
-
-नीचे तीन छोटे निशान बने हैं।
-
-घंटी।
-
-दरवाज़ा।
-
-और एक आँख।`,
-
-            "गुप्त संदेश"
-
-        );
-
-        return;
-    }
-
-
-    /* COACH 5 */
-
-    if(
-        game.coach===5 &&
-        !game.flags.pantry
-    ){
-
-        game.flags.pantry=true;
-
-        game.inventory.push({
-
-            id:"blackKey",
-
-            name:"काली चाबी 🔑",
-
-            desc:"इस पर 13 नंबर खुदा है।"
-
-        });
-
-        setEvent(
-
-            "Pantry के अंदर",
-
-            "बर्तनों की आवाज़ अचानक बंद हो गई। फर्श पर एक काली चाबी पड़ी है।",
-
-            "आइटम मिला"
-
-        );
-
-        return;
-    }
-
-
-    /* COACH 6 */
-
-    if(
-        game.coach===6 &&
-        !game.flags.oldMan
-    ){
-
-        game.flags.oldMan=true;
-
-        setEvent(
-
-            "बूढ़ा यात्री",
-
-            "वह आदमी तुम्हें देखकर मुस्कुराता है।
-
-“तुम हर बार देर से आते हो, बेटा।”",
-
-            "अजनबी",
-
-            [
-
-                {
-
-                    text:"“आप मुझे जानते हैं?”",
-
-                    action:()=>{
-
-                        game.flags.accident=true;
-
-                        setEvent(
-
-                            "उसका जवाब",
-
-                            "“मैं तुम्हें नहीं… तुम्हारे पहले सफ़र को जानता हूँ।”",
-
-                            "रहस्य"
-
-                        );
-
-                    }
-
-                },
-
-                {
-
-                    text:"चुपचाप आगे बढ़ो",
-
-                    action:()=>{
-
-                        game.fear+=12;
-
-                        setEvent(
-
-                            "खाली सीट",
-
-                            "तुम पीछे मुड़ते हो। बूढ़ा आदमी गायब है।",
-
-                            "डर"
-
-                        );
-
-                    }
-
-                }
-
-            ]
-
-        );
-
-        return;
-    }
-
-
-    /* COACH 7 */
-
-    if(game.coach===7){
-
-        game.fear=
-            clamp(
-                game.fear+15,
-                0,
-                100
-            );
-
-        setEvent(
-
-            "अँधेरा",
-
-            "Emergency lights बंद हो गईं। सिर्फ तुम्हारी टॉर्च जल रही है। दूर किसी के कदमों की आवाज़ आ रही है।",
-
-            "खतरा"
-
-        );
-
-        return;
-    }
-
-
-    /* COACH 8 */
-
-    if(game.coach===8){
-
-        setEvent(
-
-            "Coach 8",
-
-            "यह coach बाकी ट्रेन जैसा नहीं है।
-
-खिड़की के बाहर एक स्टेशन दिखाई दे रहा है।
-
-लेकिन ट्रेन अभी भी चल रही है।",
-
-            "अंतिम निर्णय",
-
-            [
-
-                {
-
-                    text:"🔔 घंटी तीन बार बजाओ",
-
-                    action:()=>ending("true")
-
-                },
-
-                {
-
-                    text:"🚪 दरवाज़ा खोलो",
-
-                    action:()=>ending("lost")
-
-                },
-
-                {
-
-                    text:"📱 Emergency Call करो",
-
-                    action:()=>ending("escape")
-
-                }
-
-            ]
-
-        );
-
-        return;
-    }
-
-
-    setEvent(
-
-        coaches[game.coach].name,
-
-        coaches[game.coach].description,
-
-        "सफ़र"
-
+    setTimeout(
+        hideGhost,
+        3000
     );
 
-    if(Math.random()<.7){
 
-        setTimeout(randomEvent,3500);
-
-    }
-
+    checkHealth();
 }
 
 
-/* ---------- INTERACT ---------- */
+/* =========================
+   GHOST
+========================= */
 
-function interact(){
+function showGhost() {
 
-    if(game.battery>0){
+    $("ghost").classList.add("show");
 
-        game.battery=
-            clamp(
-                game.battery-4,
-                0,
-                100
-            );
-    }
-
-
-    if(game.coach===4){
-
-        setEvent(
-
-            "आवाज़",
-
-            "तुमने दरवाज़े के पास जाकर सुना।
-
-कोई अंदर से कह रहा है:
-
-“क्या तुम मुझे बाहर निकालोगे?”",
-
-            "रहस्य",
-
-            [
-
-                {
-
-                    text:"दरवाज़ा खोलो",
-
-                    action:()=>{
-
-                        game.fear+=20;
-
-                        setEvent(
-
-                            "खाली कमरा",
-
-                            "दरवाज़ा खुलता है। अंदर कोई नहीं है। लेकिन तुम्हारे पीछे किसी के कदमों की आवाज़ आती है।",
-
-                            "डर"
-
-                        );
-
-                    }
-
-                },
-
-                {
-
-                    text:"दरवाज़ा मत खोलो",
-
-                    action:()=>{
-
-                        game.fear-=5;
-
-                        setEvent(
-
-                            "सन्नाटा",
-
-                            "आवाज़ बंद हो गई। शायद तुमने सही किया।",
-
-                            "सुरक्षित"
-
-                        );
-
-                    }
-
-                }
-
-            ]
-
-        );
-
-    }
-
-    else{
-
-        randomEvent();
-
-    }
-
-    updateUI();
-
+    $("eyes").classList.add("show");
 }
 
 
-/* ---------- INVENTORY ---------- */
+function hideGhost() {
 
-function renderInventory(){
+    $("ghost").classList.remove("show");
 
-    let box=
-        id("inventoryItems");
-
-    box.innerHTML="";
-
-    game.inventory.forEach(item=>{
-
-        let div=
-            document.createElement("div");
-
-        div.className="item";
-
-        div.innerHTML=
-            `<b>${item.name}</b>
-             <span>${item.desc}</span>`;
-
-        box.appendChild(div);
-
-    });
-
+    $("eyes").classList.remove("show");
 }
 
 
-/* ---------- PHONE ---------- */
-
-function addMessage(text,who="Unknown"){
-
-    game.messages.push({
-
-        who:who,
-
-        text:text.replaceAll(
-            "{name}",
-            game.name
-        )
-
-    });
-
-    renderMessages();
-
-}
-
-
-function renderMessages(){
-
-    let box=id("messages");
-
-    box.innerHTML="";
-
-    game.messages
-        .slice(-10)
-        .forEach(message=>{
-
-            let div=
-                document.createElement("div");
-
-            div.className=
-                "msg "+
-                (message.who==="तुम"
-                ?"you"
-                :"");
-
-            div.innerHTML=
-                `<b>${message.who}</b><br>
-                ${message.text}`;
-
-            box.appendChild(div);
-
-        });
-
-}
-
-
-/* ---------- ENDINGS ---------- */
-
-function ending(type){
-
-    let titles={
-
-        true:"सच्चा सफ़र",
-
-        lost:"ट्रेन ने तुम्हें रख लिया",
-
-        escape:"आख़िरी कॉल"
-
-    };
-
-
-    let texts={
-
-        true:
-
-        `घंटी तीन बार बजती है।
-
-पूरी ट्रेन शांत हो जाती है।
-
-बूढ़े आदमी की आवाज़ आती है:
-
-“अब तुम जा सकते हो।”
-
-सुबह एक खाली ट्रेन स्टेशन पर मिलती है।
-
-तुम्हारा टिकट प्लेटफ़ॉर्म पर पड़ा है।
-
-लेकिन passenger list से तुम्हारा नाम गायब है।`,
-
-
-
-        lost:
-
-        `दरवाज़ा खुलता है।
-
-बाहर स्टेशन नहीं है।
-
-वहाँ वही ट्रेन खड़ी है।
-
-तुम अंदर कदम रखते हो।
-
-दरवाज़ा बंद हो जाता है।
-
-Announcement आती है:
-
-“नए यात्री ${game.name} का स्वागत है।”`,
-
-
-
-        escape:
-
-        `फोन में अचानक Network आ जाता है।
-
-तुम Emergency Call करते हो।
-
-दूसरी तरफ तुम्हारी ही आवाज़ आती है:
-
-“फोन मत उठाना।”
-
-Call कट जाती है।
-
-सुबह ट्रेन रुकती है।
-
-तुम अकेले प्लेटफ़ॉर्म पर खड़े हो।`
-
-    };
-
-
-    id("gameScreen").classList.add("hidden");
-
-    id("endingScreen").classList.remove("hidden");
-
-    id("endingTitle").innerText=
-        titles[type];
-
-    id("endingText").innerText=
-        texts[type];
-
-    id("endingStats").innerText=
-
-        `यात्री: ${game.name}
-        • घटनाएँ: ${game.events}
-        • डर: ${Math.round(game.fear)}/100
-        • अंतिम Coach: ${game.coach}`;
-
-}
-
-
-/* ---------- POPUPS ---------- */
-
-function openPopup(name){
-
-    id(name).classList.remove("hidden");
-
-}
-
-function closePopup(name){
-
-    id(name).classList.add("hidden");
-
-}
-
-function openInventory(){
+/* =========================
+   INVENTORY
+========================= */
+
+function openInventory() {
+
+    $("inventory").classList.remove(
+        "hidden"
+    );
 
     renderInventory();
-
-    openPopup("inventory");
-
 }
 
-function openPhone(){
 
-    addMessage(
+function renderInventory() {
 
-        "अगर तुम यह message पढ़ रहे हो… पीछे मत देखना।",
+    const container =
+        $("inventoryItems");
 
-        "Unknown"
 
+    if (!container) return;
+
+
+    container.innerHTML = "";
+
+
+    game.items.forEach(
+        function (item) {
+
+            const div =
+                document.createElement("div");
+
+
+            div.className = "item";
+
+            div.textContent = item;
+
+
+            container.appendChild(div);
+
+        }
     );
 
-    openPopup("phone");
+}
+
+
+/* =========================
+   PHONE
+========================= */
+
+function openPhone() {
+
+    $("phone").classList.remove(
+        "hidden"
+    );
+
+    renderMessages();
+}
+
+
+function renderMessages() {
+
+    const container =
+        $("messages");
+
+
+    if (!container) return;
+
+
+    container.innerHTML = "";
+
+
+    game.messages.forEach(
+        function (message) {
+
+            const div =
+                document.createElement("div");
+
+
+            div.className = "message";
+
+            div.textContent = message;
+
+
+            container.appendChild(div);
+
+        }
+    );
 
 }
 
 
-/* ---------- SAVE ---------- */
+/* =========================
+   POPUPS
+========================= */
 
-function saveGame(){
+function openPopup(id) {
 
-    game.difficulty=
-        id("difficulty").value;
+    $(id).classList.remove(
+        "hidden"
+    );
+}
+
+
+function closePopup(id) {
+
+    if ($(id)) {
+
+        $(id).classList.add(
+            "hidden"
+        );
+
+    }
+}
+
+
+/* =========================
+   SAVE
+========================= */
+
+function saveGame() {
 
     localStorage.setItem(
-
         "antimSafarSave",
-
         JSON.stringify(game)
-
     );
 
-    setEvent(
 
-        "गेम सेव हो गया",
-
-        "तुम्हारी यात्रा इसी browser में save हो गई है।",
-
-        "सिस्टम"
-
+    alert(
+        "💾 Game Save हो गया!"
     );
-
 }
 
 
-function loadGame(){
+/* =========================
+   LOAD
+========================= */
 
-    let saved=
+function loadGame() {
+
+    const saved =
         localStorage.getItem(
             "antimSafarSave"
         );
 
-    if(!saved){
 
-        setEvent(
+    if (!saved) {
 
-            "Save नहीं मिला",
-
-            "अभी कोई saved game उपलब्ध नहीं है।",
-
-            "सिस्टम"
-
+        alert(
+            "कोई Save Game नहीं मिला।"
         );
 
         return;
-
     }
 
 
-    game=
-        JSON.parse(saved);
+    try {
 
-    updateUI();
+        game =
+            JSON.parse(saved);
 
-    id("gameScreen").classList.remove("hidden");
 
-    setEvent(
+        updateUI();
 
-        "गेम Load हो गया",
 
-        `स्वागत है, ${game.name}। सफ़र फिर शुरू हो गया।`,
+        hide("startScreen");
 
-        "सिस्टम"
+        hide("storyScreen");
 
-    );
+        show("gameScreen");
 
+
+        setEvent(
+            "Game Loaded",
+            "सफ़र वापस शुरू हो गया",
+            "तुम उसी Coach में वापस आ गए हो जहाँ तुमने game save किया था।"
+        );
+
+
+        closePopup("settings");
+
+
+    } catch (error) {
+
+        alert(
+            "Save file खराब है।"
+        );
+
+    }
 }
 
 
-function newGame(){
+/* =========================
+   NEW GAME
+========================= */
+
+function newGame() {
+
+    const answer =
+        confirm(
+            "क्या तुम नई शुरुआत करना चाहते हो?"
+        );
+
+
+    if (!answer) return;
+
 
     localStorage.removeItem(
         "antimSafarSave"
     );
 
+
     location.reload();
+}
+
+
+/* =========================
+   HEALTH
+========================= */
+
+function checkHealth() {
+
+    if (game.health <= 0) {
+
+        lostEnding();
+
+        return;
+    }
+
+
+    if (game.fear >= 100) {
+
+        fearEnding();
+
+    }
+}
+
+
+/* =========================
+   ENDINGS
+========================= */
+
+function trueEnding() {
+
+    hide("gameScreen");
+
+    show("endingScreen");
+
+
+    $("endingTitle").textContent =
+        "🌅 तुम बच गए";
+
+
+    $("endingText").textContent =
+        `${game.playerName}, तुमने पुराना टिकट खोज लिया और आख़िरी दरवाज़े का रहस्य समझ लिया। ट्रेन सुबह एक सुनसान स्टेशन पर रुकी। दरवाज़ा खुला… और तुम बाहर निकल गए। पीछे मुड़कर देखा तो ट्रेन गायब थी।`;
+
+
+    $("endingStats").textContent =
+        `Coach: ${game.coach} • Clues: ${game.clues} • Fear: ${game.fear}`;
 
 }
 
 
-/* ---------- SETTINGS ---------- */
+function lostEnding() {
 
-id("difficulty").onchange=
+    hide("gameScreen");
 
-function(){
-
-    game.difficulty=
-        this.value;
-
-};
+    show("endingScreen");
 
 
-/* ---------- KEYBOARD ---------- */
-
-document.addEventListener(
-
-"keydown",
-
-function(event){
-
-    if(
-        document.activeElement.tagName==="INPUT"
-    ){
-
-        return;
-
-    }
+    $("endingTitle").textContent =
+        "👻 तुम खो गए";
 
 
-    let key=
-        event.key.toLowerCase();
+    $("endingText").textContent =
+        `${game.playerName}, ट्रेन रुक गई। जब दरवाज़े खुले तो बाहर कोई स्टेशन नहीं था। सिर्फ धुंध थी। तुमने एक कदम बाहर रखा… और फिर ट्रेन हमेशा के लिए गायब हो गई।`;
 
 
-    if(
-        key==="a" ||
-        event.key==="ArrowLeft"
-    ){
+    $("endingStats").textContent =
+        `Coach: ${game.coach} • Fear: ${game.fear}`;
 
-        moveCoach(-1);
-
-    }
+}
 
 
-    if(
-        key==="d" ||
-        event.key==="ArrowRight"
-    ){
+function fearEnding() {
 
-        moveCoach(1);
+    hide("gameScreen");
 
-    }
+    show("endingScreen");
 
 
-    if(key==="e"){
-
-        interact();
-
-    }
+    $("endingTitle").textContent =
+        "😨 डर ने जीत लिया";
 
 
-    if(key==="i"){
-
-        openInventory();
-
-    }
+    $("endingText").textContent =
+        "तुम्हारा डर इतना बढ़ गया कि तुम्हें ट्रेन में मौजूद चीज़ें वास्तविक और भ्रम के बीच अलग दिखाई देना बंद हो गईं।";
 
 
-    if(key==="p"){
+    $("endingStats").textContent =
+        `Fear: ${game.fear} • Health: ${game.health}`;
 
-        openPhone();
-
-    }
-
-});
+}
 
 
-/* ---------- RANDOM PHONE MESSAGES ---------- */
+/* =========================
+   AUTO BATTERY
+========================= */
 
 setInterval(
+    function () {
 
-function(){
+        if (
+            $("gameScreen") &&
+            !$("gameScreen").classList.contains("hidden")
+        ) {
 
-    if(
-        id("gameScreen").classList.contains(
-            "hidden"
-        )
-    ){
+            if (game.battery > 0) {
 
-        return;
+                game.battery--;
 
-    }
+                updateUI();
 
+            }
 
-    if(Math.random()<.08){
+        }
 
-        let messages=[
-
-            "मैं Coach 4 में हूँ। तुम कहाँ हो?",
-
-            "तुम्हारा टिकट मेरे पास क्यों है?",
-
-            "घंटी सुनते ही नीचे झुक जाना।",
-
-            "{name}, क्या तुम अभी भी ट्रेन में हो?",
-
-            "Coach 8 मत जाना।",
-
-            "वह आदमी passenger नहीं है।"
-
-        ];
-
-
-        addMessage(
-
-            messages[
-                Math.floor(
-                  
+    },
+    30000
+);
