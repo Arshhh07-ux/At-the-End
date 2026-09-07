@@ -1,3 +1,37 @@
+document.addEventListener("DOMContentLoaded", function () {
+
+    const startBtn = document.getElementById("startBtn");
+
+    startBtn.addEventListener("click", function () {
+
+        const nameInput = document.getElementById("nameInput");
+        const name = nameInput.value.trim();
+
+        if (name === "") {
+            alert("पहले अपना नाम लिखो!");
+            nameInput.focus();
+            return;
+        }
+
+        game.name = name;
+
+        document.getElementById("storyText").innerText =
+        `तुम, ${name}, रात की आख़िरी ट्रेन पकड़ते हो।
+
+टिकट पर लिखा है कि ट्रेन तुम्हें एक ऐसे स्टेशन पर ले जाएगी जिसका नाम तुमने कभी नहीं सुना।
+
+ट्रेन चलने से पहले एक बूढ़ा आदमी तुम्हें देखकर कहता है:
+
+“अगर घंटी तीन बार बजे… पीछे मत देखना।”
+
+कुछ ही सेकंड बाद ट्रेन चल पड़ती है।`;
+
+        document.getElementById("startScreen").classList.add("hidden");
+        document.getElementById("storyScreen").classList.remove("hidden");
+
+    });
+
+});
 /* =====================================================
    अंतिम सफ़र
    Original Hindi Horror Train Game
