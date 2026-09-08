@@ -1158,4 +1158,933 @@ function createExplosion(pos){
 
         const p =
             new THREE.Mesh(
-                ne
+                new THREE.BoxGeometry(
+                    .1,.1,.1
+                ),
+                new THREE.MeshBasicMaterial({
+                    color:0xff5522
+                })
+            );
+
+        p.position.copy(pos);
+
+        p.userData.velocity =
+            new THREE.Vector3(
+                rand(-3,3),
+                rand(1,5),
+                rand(-3,3)
+            );
+
+        p.userData.life=1;
+
+        scene.add(p);
+
+        particles.push(p);
+    }
+}
+
+
+/* =========================================================
+   PLAYER DAMAGE
+   ========================================================= */
+
+function damagePlayer(amount){
+
+    if(gameOver) return;
+
+    health -= amount;
+
+    health = clamp(
+        health,
+        0,
+        100
+    );
+
+    updateHUD();
+
+    if(health <= 0){
+        endGame();
+    }
+}
+
+
+/* =========================================================
+   GAME OVER
+   ========================================================= */
+
+function endGame(){
+
+    gameOver = true;
+    running = false;
+
+    document
+        .getElementById("finalScore")
+        .textContent = score;
+
+    document
+        .getElementById("finalCoins")
+        .textContent = coinScore;
+
+    document
+        .getElementById("gameOver")
+        .classList.remove("hidden");
+}
+
+
+/* =========================================================
+   UPDATE ENEMIES
+   ========================================================= */
+
+function updateEnemies(delta){
+
+    for(let i = enemies.length - 1; i >= 0; i--){
+
+        const enemy = enemies[i];
+
+        const dir =
+            new THREE.Vector3()
+            .subVectors(
+                player.position,
+                enemy.position
+            );
+
+        const dist = dir.length();
+
+        dir.normalize();
+
+        enemy.position.add(
+            dir.multiplyScalar(
+                enemy.userData.speed * delta
+            )
+        );
+
+        enemy.lookAt(
+            player.position.x,
+            enemy.position.y,
+            player.position.z
+        );
+
+        enemy.userData.hitTimer -= delta;
+
+        if(
+            dist < 1.8 &&
+            enemy.userData.hitTimer <= 0
+        ){
+
+            damagePlayer(8);
+
+            enemy.userData.hitTimer = 1;
+        }
+
+        if(dist > 70){
+
+            scene.remove(enemy);
+
+            enemies.splice(i,1);
+        }
+    }
+}
+
+
+/* =========================================================
+   UPDATE BULLETS
+   ========================================================= */
+
+function updateBullets(delta){
+
+    for(let i = bullets.length - 1; i >= 0; i--){
+
+        const bullet = bullets[i];
+
+        bullet.position.add(
+            bullet.userData.velocity
+            .clone()
+            .multiplyScalar(delta)
+        );
+
+        bullet.userData.life -= delta;
+
+        let remove = false;
+
+        for(
+            let j = enemies.length - 1;
+            j >= 0;
+            j--
+        ){
+
+            const enemy = enemies[j];
+
+            if(
+                bullet.position.distanceTo(
+                    enemy.position
+                ) < 1.3
+            ){
+
+                enemy.userData.health--;
+
+                createExplosion(
+                    bullet.position
+                );
+
+                remove = true;
+
+                if(enemy.userData.health <= 0){
+
+                    score += 100;
+
+                    level =
+                        Math.floor(score / 500) + 1;
+
+                    scene.remove(enemy);
+
+                    enemies.splice(j,1);
+
+                    showMessage(
+                        "💥 ENEMY DEFEATED +100"
+                    );
+                }
+
+                break;
+            }
+        }
+
+        if(
+            bullet.userData.life <= 0 ||
+            remove
+        ){
+
+            scene.remove(bullet);
+
+            bullets.splice(i,1);
+        }
+    }
+}
+
+
+/* =========================================================
+   UPDATE COINS
+   ========================================================= */
+
+function updateCoins(delta){
+
+    for(let i = coins.length - 1; i >= 0; i--){
+
+        const coin = coins[i];
+
+        coin.rotation.y += delta * 4;
+
+        coin.position.y +=
+            Math.sin(
+                performance.now() * .004 + i
+            ) * .003;
+
+        if(
+            coin.position.distanceTo(
+                player.position
+            ) < 1.7
+        ){
+
+            coinScore++;
+
+            score += 25;
+
+            scene.remove(coin);
+
+            coins.splice(i,1);
+
+            showMessage(
+                "🪙 COIN +25"
+            );
+
+            updateHUD();
+        }
+    }
+}
+
+
+/* =========================================================
+   PARTICLE UPDATE
+   ========================================================= */
+
+function updateParticles(delta){
+
+    for(
+        let i = particles.length - 1;
+        i >= 0;
+        i--
+    ){
+
+        const p = particles[i];
+
+        p.position.add(
+            p.userData.velocity
+            .clone()
+            .multiplyScalar(delta)
+        );
+
+        p.userData.velocity.y -=
+            5 * delta;
+
+        p.userData.life -= delta;
+
+        if(p.userData.life <= 0){
+
+            scene.remove(p);
+
+            particles.splice(i,1);
+        }
+    }
+}
+
+
+/* =========================================================
+   PLAYER MOVEMENT
+   ========================================================= */
+
+function updatePlayer(delta){
+
+    if(!running) return;
+
+    let x = 0;
+    let z = 0;
+
+    if(
+        keys["w"] ||
+        keys["W"] ||
+        keys["ArrowUp"]
+    ){
+        z -= 1;
+    }
+
+    if(
+        keys["s"] ||
+        keys["S"] ||
+        keys["ArrowDown"]
+    ){
+        z += 1;
+    }
+
+    if(
+        keys["a"] ||
+        keys["A"] ||
+        keys["ArrowLeft"]
+    ){
+        x -= 1;
+    }
+
+    if(
+        keys["d"] ||
+        keys["D"] ||
+        keys["ArrowRight"]
+    ){
+        x += 1;
+    }
+
+    x += joystickX;
+    z += joystickY;
+
+    const len =
+        Math.sqrt(
+            x*x + z*z
+        );
+
+    if(len > 1){
+
+        x /= len;
+        z /= len;
+    }
+
+    player.position.x +=
+        x * playerSpeed * delta;
+
+    player.position.z +=
+        z * playerSpeed * delta;
+
+    player.position.x =
+        clamp(
+            player.position.x,
+            -14,
+            14
+        );
+
+    /*
+       Camera follows player
+    */
+
+    const target =
+        new THREE.Vector3(
+            player.position.x,
+            player.position.y + 1.8,
+            player.position.z
+        );
+
+    camera.position.lerp(
+        target,
+        .15
+    );
+
+    camera.rotation.order =
+        "YXZ";
+
+    camera.rotation.y =
+        yaw;
+
+    camera.rotation.x =
+        pitch;
+}
+
+
+/* =========================================================
+   SPAWN SYSTEM
+   ========================================================= */
+
+function updateSpawning(delta){
+
+    spawnTimer += delta;
+
+    coinTimer += delta;
+
+    const enemyInterval =
+        Math.max(
+            .7,
+            2.5 - level * .1
+        );
+
+    if(
+        spawnTimer >
+        enemyInterval
+    ){
+
+        spawnTimer = 0;
+
+        if(
+            enemies.length <
+            Math.min(
+                4 + level,
+                15
+            )
+        ){
+
+            spawnEnemy();
+        }
+    }
+
+    if(coinTimer > 2){
+
+        coinTimer = 0;
+
+        if(coins.length < 8){
+
+            spawnCoin();
+        }
+    }
+}
+
+
+/* =========================================================
+   HUD
+   ========================================================= */
+
+function updateHUD(){
+
+    document
+        .getElementById("level")
+        .textContent = level;
+
+    document
+        .getElementById("score")
+        .textContent = score;
+
+    document
+        .getElementById("coins")
+        .textContent = coinScore;
+
+    document
+        .getElementById("enemyCount")
+        .textContent = enemies.length;
+
+    document
+        .getElementById("healthText")
+        .textContent =
+        Math.round(health);
+
+    document
+        .getElementById("health")
+        .style.width =
+        health + "%";
+
+    document
+        .getElementById("mission")
+        .textContent =
+        "Defeat enemies • Survive • Collect coins";
+}
+
+
+/* =========================================================
+   MESSAGE
+   ========================================================= */
+
+let messageTimer;
+
+function showMessage(text){
+
+    const el =
+        document.getElementById(
+            "message"
+        );
+
+    el.textContent = text;
+
+    el.style.opacity = 1;
+
+    clearTimeout(messageTimer);
+
+    messageTimer =
+        setTimeout(
+            function(){
+
+                el.style.opacity = 0;
+
+            },
+            1000
+        );
+}
+
+
+/* =========================================================
+   KEYBOARD
+   ========================================================= */
+
+function setupKeyboard(){
+
+    window.addEventListener(
+        "keydown",
+        function(e){
+
+            keys[e.key] = true;
+
+            if(e.code === "Space"){
+
+                e.preventDefault();
+
+                shoot();
+            }
+        }
+    );
+
+    window.addEventListener(
+        "keyup",
+        function(e){
+
+            keys[e.key] = false;
+        }
+    );
+}
+
+
+/* =========================================================
+   MOUSE
+   ========================================================= */
+
+function setupMouse(){
+
+    renderer.domElement.addEventListener(
+        "click",
+        function(){
+
+            if(running){
+                shoot();
+            }
+        }
+    );
+
+    document.addEventListener(
+        "mousemove",
+        function(e){
+
+            if(!running) return;
+
+            if(
+                document.pointerLockElement ===
+                renderer.domElement
+            ){
+
+                yaw -=
+                    e.movementX * .0025;
+
+                pitch -=
+                    e.movementY * .0025;
+
+                pitch =
+                    clamp(
+                        pitch,
+                        -1.3,
+                        1.3
+                    );
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   MOBILE CONTROLS
+   ========================================================= */
+
+function setupMobile(){
+
+    const joystick =
+        document.getElementById(
+            "joystick"
+        );
+
+    const stick =
+        document.getElementById(
+            "stick"
+        );
+
+    let active = false;
+
+    function moveJoystick(e){
+
+        if(!active) return;
+
+        const rect =
+            joystick.getBoundingClientRect();
+
+        const touch =
+            e.touches[0];
+
+        let dx =
+            touch.clientX -
+            (
+                rect.left +
+                rect.width / 2
+            );
+
+        let dy =
+            touch.clientY -
+            (
+                rect.top +
+                rect.height / 2
+            );
+
+        const max = 45;
+
+        const len =
+            Math.sqrt(
+                dx*dx + dy*dy
+            );
+
+        if(len > max){
+
+            dx =
+                dx / len * max;
+
+            dy =
+                dy / len * max;
+        }
+
+        stick.style.left =
+            "calc(50% + " +
+            dx +
+            "px)";
+
+        stick.style.top =
+            "calc(50% + " +
+            dy +
+            "px)";
+
+        joystickX =
+            dx / max;
+
+        joystickY =
+            dy / max;
+    }
+
+
+    joystick.addEventListener(
+        "touchstart",
+        function(e){
+
+            e.preventDefault();
+
+            active = true;
+
+            moveJoystick(e);
+        },
+        {passive:false}
+    );
+
+
+    joystick.addEventListener(
+        "touchmove",
+        function(e){
+
+            e.preventDefault();
+
+            moveJoystick(e);
+        },
+        {passive:false}
+    );
+
+
+    joystick.addEventListener(
+        "touchend",
+        function(){
+
+            active = false;
+
+            joystickX = 0;
+            joystickY = 0;
+
+            stick.style.left = "50%";
+            stick.style.top = "50%";
+        }
+    );
+
+
+    document
+        .getElementById("shoot")
+        .addEventListener(
+            "touchstart",
+            function(e){
+
+                e.preventDefault();
+
+                shoot();
+            },
+            {passive:false}
+        );
+
+
+    document
+        .getElementById("jump")
+        .addEventListener(
+            "touchstart",
+            function(e){
+
+                e.preventDefault();
+
+                if(!running) return;
+
+                player.position.y = .7;
+
+                setTimeout(
+                    function(){
+
+                        player.position.y = 0;
+
+                    },
+                    400
+                );
+            },
+            {passive:false}
+        );
+}
+
+
+/* =========================================================
+   START GAME
+   ========================================================= */
+
+function startGame(){
+
+    document
+        .getElementById("startScreen")
+        .classList.add("hidden");
+
+    document
+        .getElementById("gameOver")
+        .classList.add("hidden");
+
+    gameOver = false;
+
+    running = true;
+
+    score = 0;
+
+    coinScore = 0;
+
+    health = 100;
+
+    level = 1;
+
+    spawnTimer = 0;
+
+    coinTimer = 0;
+
+    player.position.set(
+        0,
+        0,
+        10
+    );
+
+    yaw = 0;
+
+    pitch = 0;
+
+    updateHUD();
+
+    showMessage(
+        "🚂 ANANT EXPRESS STARTED!"
+    );
+
+    for(let i = 0; i < 3; i++){
+
+        spawnEnemy();
+    }
+
+    for(let i = 0; i < 4; i++){
+
+        spawnCoin();
+    }
+}
+
+
+/* =========================================================
+   RESTART GAME
+   ========================================================= */
+
+function restartGame(){
+
+    enemies.forEach(
+        function(enemy){
+
+            scene.remove(enemy);
+        }
+    );
+
+    bullets.forEach(
+        function(bullet){
+
+            scene.remove(bullet);
+        }
+    );
+
+    coins.forEach(
+        function(coin){
+
+            scene.remove(coin);
+        }
+    );
+
+    particles.forEach(
+        function(particle){
+
+            scene.remove(particle);
+        }
+    );
+
+    enemies = [];
+
+    bullets = [];
+
+    coins = [];
+
+    particles = [];
+
+    startGame();
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+document
+    .getElementById("startBtn")
+    .addEventListener(
+        "click",
+        function(){
+
+            startGame();
+        }
+    );
+
+
+document
+    .getElementById("restartBtn")
+    .addEventListener(
+        "click",
+        function(){
+
+            restartGame();
+        }
+    );
+
+
+/* =========================================================
+   RESIZE
+   ========================================================= */
+
+function resize(){
+
+    camera.aspect =
+        window.innerWidth /
+        window.innerHeight;
+
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
+}
+
+window.addEventListener(
+    "resize",
+    resize
+);
+
+
+/* =========================================================
+   MAIN GAME LOOP
+   ========================================================= */
+
+function animate(){
+
+    requestAnimationFrame(
+        animate
+    );
+
+    const delta =
+        Math.min(
+            clock.getDelta(),
+            .05
+        );
+
+    if(running){
+
+        updatePlayer(delta);
+
+        updateEnemies(delta);
+
+        updateBullets(delta);
+
+        updateCoins(delta);
+
+        updateParticles(delta);
+
+        updateSpawning(delta);
+
+        updateHUD();
+    }
+
+    renderer.render(
+        scene,
+        camera
+    );
+}
+
+
+/* =========================================================
+   START 3D ENGINE
+   ========================================================= */
+
+init();
+
+</script>
+
+</body>
+</html>
