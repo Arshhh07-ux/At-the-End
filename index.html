@@ -1,307 +1,1161 @@
 <!DOCTYPE html>
-<html lang="hi">
-
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Anant Express — 3D Game</title>
 
-    <title>अंतिम सफ़र - Horror Express</title>
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+}
 
-    <link rel="stylesheet" href="style.css">
+html,body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#050509;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+#game{
+    position:fixed;
+    inset:0;
+}
+
+canvas{
+    display:block;
+}
+
+/* HUD */
+#hud{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    padding:15px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    pointer-events:none;
+    z-index:10;
+}
+
+.panel{
+    background:rgba(0,0,0,.55);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:14px;
+    padding:10px 14px;
+    color:white;
+    backdrop-filter:blur(8px);
+    min-width:150px;
+}
+
+#title{
+    font-size:17px;
+    font-weight:bold;
+}
+
+#stats{
+    margin-top:5px;
+    font-size:13px;
+    line-height:1.6;
+}
+
+#healthOuter{
+    width:140px;
+    height:12px;
+    margin-top:6px;
+    border-radius:20px;
+    background:#333;
+    overflow:hidden;
+}
+
+#health{
+    width:100%;
+    height:100%;
+    background:#32e875;
+    transition:.2s;
+}
+
+/* Crosshair */
+#crosshair{
+    position:fixed;
+    left:50%;
+    top:50%;
+    width:25px;
+    height:25px;
+    transform:translate(-50%,-50%);
+    z-index:20;
+    pointer-events:none;
+}
+
+#crosshair:before,
+#crosshair:after{
+    content:"";
+    position:absolute;
+    background:white;
+    box-shadow:0 0 5px #fff;
+}
+
+#crosshair:before{
+    width:25px;
+    height:2px;
+    top:11px;
+    left:0;
+}
+
+#crosshair:after{
+    width:2px;
+    height:25px;
+    top:0;
+    left:11px;
+}
+
+/* Start screen */
+#startScreen,
+#gameOver{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:
+        radial-gradient(circle at center,
+        rgba(255,190,60,.12),
+        rgba(0,0,0,.95) 65%);
+}
+
+.box{
+    width:min(90%,500px);
+    padding:35px 25px;
+    text-align:center;
+    color:white;
+    background:rgba(10,10,18,.88);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:25px;
+    box-shadow:0 0 60px rgba(255,170,40,.12);
+}
+
+.box h1{
+    font-size:42px;
+    margin-bottom:8px;
+    letter-spacing:2px;
+}
+
+.box h2{
+    margin-bottom:10px;
+}
+
+.box p{
+    color:#aaa;
+    line-height:1.6;
+    margin:15px 0;
+}
+
+button{
+    border:none;
+    outline:none;
+    cursor:pointer;
+    color:white;
+    background:linear-gradient(135deg,#ff9d00,#ff3d00);
+    padding:14px 30px;
+    border-radius:14px;
+    font-size:17px;
+    font-weight:bold;
+    box-shadow:0 8px 25px rgba(255,90,0,.25);
+}
+
+button:active{
+    transform:scale(.95);
+}
+
+.hidden{
+    display:none !important;
+}
+
+/* Mobile controls */
+#mobileControls{
+    position:fixed;
+    inset:0;
+    z-index:30;
+    pointer-events:none;
+    display:none;
+}
+
+#joystick{
+    position:absolute;
+    left:25px;
+    bottom:30px;
+    width:125px;
+    height:125px;
+    border-radius:50%;
+    background:rgba(255,255,255,.08);
+    border:2px solid rgba(255,255,255,.18);
+    pointer-events:auto;
+}
+
+#stick{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:55px;
+    height:55px;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:rgba(255,160,30,.75);
+}
+
+#shoot{
+    position:absolute;
+    right:25px;
+    bottom:45px;
+    width:90px;
+    height:90px;
+    border-radius:50%;
+    background:rgba(255,55,30,.7);
+    border:2px solid rgba(255,255,255,.3);
+    pointer-events:auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    font-weight:bold;
+}
+
+#jump{
+    position:absolute;
+    right:125px;
+    bottom:35px;
+    width:65px;
+    height:65px;
+    border-radius:50%;
+    background:rgba(255,255,255,.15);
+    border:2px solid rgba(255,255,255,.2);
+    pointer-events:auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    font-size:12px;
+}
+
+/* message */
+#message{
+    position:fixed;
+    left:50%;
+    top:20%;
+    transform:translateX(-50%);
+    z-index:50;
+    color:white;
+    font-size:24px;
+    font-weight:bold;
+    text-shadow:0 2px 8px #000;
+    opacity:0;
+    transition:.3s;
+    pointer-events:none;
+}
+
+@media(max-width:800px){
+    #mobileControls{
+        display:block;
+    }
+
+    #hud{
+        padding:8px;
+    }
+
+    .panel{
+        min-width:auto;
+        padding:7px 9px;
+    }
+
+    #title{
+        font-size:14px;
+    }
+
+    #stats{
+        font-size:11px;
+    }
+
+    #healthOuter{
+        width:100px;
+    }
+
+    .box h1{
+        font-size:32px;
+    }
+}
+</style>
 </head>
 
 <body>
 
-    <!-- START SCREEN -->
+<div id="game"></div>
 
-    <div id="startScreen">
+<div id="hud">
+    <div class="panel">
+        <div id="title">🚂 ANANT EXPRESS</div>
 
-        <div class="startPanel">
+        <div id="stats">
+            Level: <span id="level">1</span><br>
+            Score: <span id="score">0</span><br>
+            Coins: <span id="coins">0</span><br>
+            Enemies: <span id="enemyCount">0</span>
 
-            <div class="warning">⚠ CLASSIFIED NIGHT JOURNEY ⚠</div>
-
-            <h1>अंतिम सफ़र</h1>
-
-            <div class="englishTitle">
-                THE LAST JOURNEY
+            <div id="healthOuter">
+                <div id="health"></div>
             </div>
 
-            <p class="storyIntro">
-                रात के 2:13 बजे तुम एक सुनसान स्टेशन पर ट्रेन में चढ़ते हो।
-                <br>
-                ट्रेन चलती है...
-                <br>
-                लेकिन कुछ देर बाद तुम्हें पता चलता है कि
-                <b>इस ट्रेन में तुम अकेले नहीं हो।</b>
-            </p>
-
-            <div class="nameBox">
-
-                <label>अपना नाम लिखें</label>
-
-                <input
-                    id="playerName"
-                    type="text"
-                    maxlength="20"
-                    placeholder="यहाँ नाम लिखें">
-
-            </div>
-
-            <button id="startButton">
-                🚆 सफ़र शुरू करें
-            </button>
-
-            <p id="startError"></p>
-
-            <div class="controlsInfo">
-
-                <b>PC:</b>
-                W A S D = चलना |
-                E = Interact |
-                F = Flashlight
-
-                <br><br>
-
-                <b>Mobile:</b>
-                नीचे दिए गए controls का इस्तेमाल करें
-
-            </div>
-
-            <div class="warningBottom">
-                ⚠ HEADPHONES RECOMMENDED ⚠
-            </div>
-
+            ❤️ <span id="healthText">100</span>
         </div>
-
     </div>
 
-
-    <!-- GAME -->
-
-    <div id="game">
-
-        <div id="threeContainer"></div>
-
-
-        <!-- CINEMATIC EFFECTS -->
-
-        <div id="vignette"></div>
-
-        <div id="damageFlash"></div>
-
-        <div id="redOverlay"></div>
-
-        <div id="staticEffect"></div>
-
-        <div id="bloodOverlay"></div>
-
-
-        <!-- TOP HUD -->
-
-        <div id="hud">
-
-            <div class="hudLeft">
-
-                <div class="stat">
-                    ❤️
-                    <span id="health">100</span>
-                </div>
-
-                <div class="stat">
-                    😨
-                    <span id="fear">0</span>
-                </div>
-
-                <div class="stat">
-                    🔋
-                    <span id="battery">100</span>
-                </div>
-
-                <div class="stat">
-                    🏃
-                    <span id="stamina">100</span>
-                </div>
-
-            </div>
-
-
-            <div class="hudCenter">
-
-                <div id="clock">
-                    02:13 AM
-                </div>
-
-                <div id="coach">
-                    COACH S1
-                </div>
-
-            </div>
-
-
-            <div class="hudRight">
-
-                <div id="playerDisplay">
-                    Player
-                </div>
-
-            </div>
-
+    <div class="panel">
+        <div>🎯 <b>MISSION</b></div>
+        <div id="mission" style="font-size:12px;margin-top:4px">
+            Defeat the enemies
         </div>
+    </div>
+</div>
 
+<div id="crosshair"></div>
+<div id="message"></div>
 
-        <!-- MISSION -->
+<!-- START -->
+<div id="startScreen">
+    <div class="box">
+        <h1>🚂</h1>
+        <h2>ANANT EXPRESS</h2>
 
-        <div id="missionBox">
+        <p>
+            Enter the endless 3D railway world.<br>
+            Defeat enemies, collect coins and survive.
+        </p>
 
-            <div class="missionTitle">
-                CURRENT OBJECTIVE
-            </div>
+        <p style="font-size:13px">
+            🖥️ WASD / Arrow Keys = Move<br>
+            🖱️ Mouse = Aim<br>
+            🔫 Click = Shoot<br>
+            📱 Mobile = Joystick + Shoot
+        </p>
 
-            <div id="mission">
-                ट्रेन के अंदर जाओ...
-            </div>
+        <button id="startBtn">START GAME</button>
+    </div>
+</div>
 
-        </div>
+<!-- GAME OVER -->
+<div id="gameOver" class="hidden">
+    <div class="box">
+        <h1>💀</h1>
+        <h2>GAME OVER</h2>
 
+        <p>
+            The Anant Express journey has ended.
+        </p>
 
-        <!-- MESSAGE -->
+        <p>
+            Score: <b id="finalScore">0</b><br>
+            Coins: <b id="finalCoins">0</b>
+        </p>
 
-        <div id="messageBox">
-            <div id="message"></div>
-        </div>
+        <button id="restartBtn">PLAY AGAIN</button>
+    </div>
+</div>
 
+<!-- MOBILE -->
+<div id="mobileControls">
 
-        <!-- INTERACTION -->
-
-        <div id="interaction">
-            E
-        </div>
-
-
-        <!-- CROSSHAIR -->
-
-        <div id="crosshair">
-            +
-        </div>
-
-
-        <!-- MOBILE CONTROLS -->
-
-        <div id="mobileControls">
-
-            <div class="joystick">
-
-                <button id="upBtn">▲</button>
-
-                <div class="middleButtons">
-
-                    <button id="leftBtn">◀</button>
-
-                    <button id="downBtn">▼</button>
-
-                    <button id="rightBtn">▶</button>
-
-                </div>
-
-            </div>
-
-
-            <div class="actionButtons">
-
-                <button id="flashButton">
-                    🔦
-                </button>
-
-                <button id="interactButton">
-                    E
-                </button>
-
-                <button id="runButton">
-                    🏃
-                </button>
-
-            </div>
-
-        </div>
-
-
-        <!-- PHONE -->
-
-        <div id="phone">
-
-            <div class="phoneTop">
-                NO SIGNAL
-            </div>
-
-            <div id="phoneTime">
-                02:13
-            </div>
-
-            <div id="phoneMessage">
-                कोई संदेश नहीं...
-            </div>
-
-            <button id="closePhone">
-                CLOSE
-            </button>
-
-        </div>
-
-
-        <!-- STORY -->
-
-        <div id="storyScreen">
-
-            <div id="storyText"></div>
-
-        </div>
-
-
-        <!-- CLIMAX -->
-
-        <div id="climaxScreen">
-
-            <div class="climaxTitle">
-                ⚠ RUN ⚠
-            </div>
-
-            <div id="climaxText">
-                वह तुम्हारे पीछे है...
-            </div>
-
-            <div class="climaxTimer">
-                <span id="climaxCounter">30</span>
-            </div>
-
-        </div>
-
-
-        <!-- ENDING -->
-
-        <div id="endingScreen">
-
-            <div id="endingTitle">
-                THE END
-            </div>
-
-            <div id="endingText"></div>
-
-            <button id="restartButton">
-                🔄 फिर से खेलें
-            </button>
-
-        </div>
-
+    <div id="joystick">
+        <div id="stick"></div>
     </div>
 
+    <div id="jump">JUMP</div>
 
-    <!-- THREE.JS -->
+    <div id="shoot">
+        🔫<br>
+        SHOOT
+    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="script.js"></script>
+</div>
 
-</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-</html>
+<script>
+
+/* =========================================================
+   ANANT EXPRESS 3D GAME
+   ========================================================= */
+
+let scene;
+let camera;
+let renderer;
+let clock;
+
+let player;
+let gun;
+
+let enemies = [];
+let bullets = [];
+let coins = [];
+let particles = [];
+
+let running = false;
+let gameOver = false;
+
+let score = 0;
+let coinScore = 0;
+let health = 100;
+let level = 1;
+
+let spawnTimer = 0;
+let coinTimer = 0;
+
+const keys = {};
+
+let yaw = 0;
+let pitch = 0;
+
+let joystickX = 0;
+let joystickY = 0;
+
+const playerSpeed = 8;
+
+/* =========================================================
+   BASIC HELPERS
+   ========================================================= */
+
+function rand(min,max){
+    return Math.random()*(max-min)+min;
+}
+
+function clamp(v,min,max){
+    return Math.max(min,Math.min(max,v));
+}
+
+function distance(a,b){
+    return a.distanceTo(b);
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+
+function init(){
+
+    scene = new THREE.Scene();
+
+    scene.background = new THREE.Color(0x05070d);
+
+    scene.fog = new THREE.FogExp2(
+        0x05070d,
+        0.018
+    );
+
+    camera = new THREE.PerspectiveCamera(
+        70,
+        window.innerWidth/window.innerHeight,
+        0.1,
+        1000
+    );
+
+    renderer = new THREE.WebGLRenderer({
+        antialias:true
+    });
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
+
+    renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio,2)
+    );
+
+    renderer.shadowMap.enabled = true;
+
+    document
+        .getElementById("game")
+        .appendChild(renderer.domElement);
+
+    clock = new THREE.Clock();
+
+    createLights();
+    createWorld();
+    createPlayer();
+
+    window.addEventListener(
+        "resize",
+        resize
+    );
+
+    setupKeyboard();
+    setupMouse();
+    setupMobile();
+
+    animate();
+}
+
+/* =========================================================
+   LIGHTING
+   ========================================================= */
+
+function createLights(){
+
+    const ambient =
+        new THREE.HemisphereLight(
+            0x8899ff,
+            0x111111,
+            1.2
+        );
+
+    scene.add(ambient);
+
+    const moon =
+        new THREE.DirectionalLight(
+            0x9abaff,
+            1.5
+        );
+
+    moon.position.set(
+        -30,
+        50,
+        -30
+    );
+
+    moon.castShadow = true;
+
+    scene.add(moon);
+
+    const orange =
+        new THREE.PointLight(
+            0xff6a00,
+            5,
+            70
+        );
+
+    orange.position.set(
+        0,
+        8,
+        -20
+    );
+
+    scene.add(orange);
+}
+
+/* =========================================================
+   WORLD
+   ========================================================= */
+
+function createWorld(){
+
+    /* Ground */
+
+    const groundGeo =
+        new THREE.PlaneGeometry(
+            300,
+            300
+        );
+
+    const groundMat =
+        new THREE.MeshStandardMaterial({
+            color:0x11151a,
+            roughness:1
+        });
+
+    const ground =
+        new THREE.Mesh(
+            groundGeo,
+            groundMat
+        );
+
+    ground.rotation.x =
+        -Math.PI/2;
+
+    ground.receiveShadow = true;
+
+    scene.add(ground);
+
+
+    /* Railway */
+
+    createRail(
+        -3
+    );
+
+    createRail(
+        3
+    );
+
+
+    /* Sleeper blocks */
+
+    for(let z=-140;z<140;z+=4){
+
+        const geo =
+            new THREE.BoxGeometry(
+                8,
+                .25,
+                .7
+            );
+
+        const mat =
+            new THREE.MeshStandardMaterial({
+                color:0x3a2520
+            });
+
+        const sleeper =
+            new THREE.Mesh(
+                geo,
+                mat
+            );
+
+        sleeper.position.set(
+            0,
+            .12,
+            z
+        );
+
+        scene.add(sleeper);
+    }
+
+
+    /* Station */
+
+    createStation();
+
+
+    /* Buildings */
+
+    for(let i=0;i<30;i++){
+
+        const side =
+            Math.random()<.5
+            ? -1
+            : 1;
+
+        const building =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    rand(5,12),
+                    rand(4,12),
+                    rand(5,12)
+                ),
+                new THREE.MeshStandardMaterial({
+                    color:
+                        new THREE.Color(
+                            rand(.03,.12),
+                            rand(.03,.12),
+                            rand(.04,.16)
+                        )
+                })
+            );
+
+        building.position.set(
+            side*rand(13,35),
+            building.geometry.parameters.height/2,
+            rand(-130,130)
+        );
+
+        scene.add(building);
+    }
+
+
+    /* Street lamps */
+
+    for(let z=-120;z<120;z+=15){
+
+        createLamp(
+            -9,
+            z
+        );
+
+        createLamp(
+            9,
+            z+7
+        );
+    }
+}
+
+
+/* =========================================================
+   RAIL
+   ========================================================= */
+
+function createRail(x){
+
+    const geo =
+        new THREE.BoxGeometry(
+            .18,
+            .18,
+            300
+        );
+
+    const mat =
+        new THREE.MeshStandardMaterial({
+            color:0x777777,
+            metalness:.8,
+            roughness:.3
+        });
+
+    const rail =
+        new THREE.Mesh(
+            geo,
+            mat
+        );
+
+    rail.position.set(
+        x,
+        .35,
+        0
+    );
+
+    scene.add(rail);
+}
+
+
+/* =========================================================
+   LAMP
+   ========================================================= */
+
+function createLamp(x,z){
+
+    const pole =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                .12,
+                .12,
+                6
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0x333333
+            })
+        );
+
+    pole.position.set(
+        x,
+        3,
+        z
+    );
+
+    scene.add(pole);
+
+    const bulb =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .3,
+                12,
+                12
+            ),
+            new THREE.MeshBasicMaterial({
+                color:0xffaa44
+            })
+        );
+
+    bulb.position.set(
+        x,
+        6,
+        z
+    );
+
+    scene.add(bulb);
+
+    const light =
+        new THREE.PointLight(
+            0xff8a30,
+            2,
+            18
+        );
+
+    light.position.set(
+        x,
+        6,
+        z
+    );
+
+    scene.add(light);
+}
+
+
+/* =========================================================
+   STATION
+   ========================================================= */
+
+function createStation(){
+
+    const platform =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                35,
+                1,
+                40
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0x25282d
+            })
+        );
+
+    platform.position.set(
+        0,
+        .5,
+        -70
+    );
+
+    scene.add(platform);
+
+
+    const roof =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                35,
+                1,
+                40
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0x111111,
+                metalness:.5
+            })
+        );
+
+    roof.position.set(
+        0,
+        13,
+        -70
+    );
+
+    scene.add(roof);
+
+
+    for(let x=-14;x<=14;x+=7){
+
+        const column =
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(
+                    .25,
+                    .25,
+                    13
+                ),
+                new THREE.MeshStandardMaterial({
+                    color:0x555555
+                })
+            );
+
+        column.position.set(
+            x,
+            6.5,
+            -70
+        );
+
+        scene.add(column);
+    }
+}
+
+
+/* =========================================================
+   PLAYER
+   ========================================================= */
+
+function createPlayer(){
+
+    player =
+        new THREE.Group();
+
+    scene.add(player);
+
+    /* Body */
+
+    const body =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                1,
+                1.7,
+                .7
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0x2266ff
+            })
+        );
+
+    body.position.y=1.4;
+    body.castShadow=true;
+
+    player.add(body);
+
+
+    /* Head */
+
+    const head =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .45,
+                20,
+                20
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0xffc39a
+            })
+        );
+
+    head.position.y=2.55;
+
+    player.add(head);
+
+
+    /* Legs */
+
+    for(const x of [-.25,.25]){
+
+        const leg =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    .25,
+                    .9,
+                    .3
+                ),
+                new THREE.MeshStandardMaterial({
+                    color:0x151515
+                })
+            );
+
+        leg.position.set(
+            x,
+            .45,
+            0
+        );
+
+        player.add(leg);
+    }
+
+
+    /* Gun */
+
+    gun =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .2,
+                .2,
+                1.2
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0x222222,
+                metalness:.8
+            })
+        );
+
+    gun.position.set(
+        .55,
+        1.6,
+        -.55
+    );
+
+    gun.rotation.x=.1;
+
+    player.add(gun);
+
+
+    player.position.set(
+        0,
+        0,
+        10
+    );
+}
+
+
+/* =========================================================
+   ENEMY
+   ========================================================= */
+
+function spawnEnemy(){
+
+    const enemy =
+        new THREE.Group();
+
+    const body =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                1,
+                1.7,
+                .7
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0xcc2222
+            })
+        );
+
+    body.position.y=1.3;
+
+    enemy.add(body);
+
+
+    const head =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .4,
+                16,
+                16
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0xdddddd
+            })
+        );
+
+    head.position.y=2.45;
+
+    enemy.add(head);
+
+
+    const angle =
+        Math.random()*Math.PI*2;
+
+    const radius =
+        rand(15,30);
+
+    enemy.position.set(
+        player.position.x+
+        Math.sin(angle)*radius,
+
+        0,
+
+        player.position.z+
+        Math.cos(angle)*radius
+    );
+
+    enemy.userData.health=3;
+    enemy.userData.speed=rand(1.2,2.3);
+    enemy.userData.hitTimer=0;
+
+    scene.add(enemy);
+
+    enemies.push(enemy);
+
+    updateHUD();
+}
+
+
+/* =========================================================
+   COIN
+   ========================================================= */
+
+function spawnCoin(){
+
+    const coin =
+        new THREE.Mesh(
+            new THREE.TorusGeometry(
+                .35,
+                .12,
+                12,
+                24
+            ),
+            new THREE.MeshStandardMaterial({
+                color:0xffcc22,
+                metalness:.8,
+                roughness:.2
+            })
+        );
+
+    coin.rotation.x =
+        Math.PI/2;
+
+    coin.position.set(
+        rand(-12,12),
+        rand(1,3),
+        player.position.z+
+        rand(-20,20)
+    );
+
+    scene.add(coin);
+
+    coins.push(coin);
+}
+
+
+/* =========================================================
+   BULLET
+   ========================================================= */
+
+function shoot(){
+
+    if(!running)return;
+
+    const bullet =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .12,
+                8,
+                8
+            ),
+            new THREE.MeshBasicMaterial({
+                color:0xffff44
+            })
+        );
+
+    const direction =
+        new THREE.Vector3(
+            0,
+            0,
+            -1
+        );
+
+    direction.applyQuaternion(
+        camera.quaternion
+    );
+
+    bullet.position.copy(
+        camera.position
+    );
+
+    bullet.userData.velocity =
+        direction.multiplyScalar(25);
+
+    bullet.userData.life=2;
+
+    scene.add(bullet);
+
+    bullets.push(bullet);
+
+    createMuzzleFlash();
+}
+
+
+/* =========================================================
+   MUZZLE
+   ========================================================= */
+
+function createMuzzleFlash(){
+
+    const flash =
+        new THREE.PointLight(
+            0xffaa22,
+            8,
+            5
+        );
+
+    flash.position.copy(
+        camera.position
+    );
+
+    scene.add(flash);
+
+    setTimeout(()=>{
+        scene.remove(flash);
+    },50);
+}
+
+
+/* =========================================================
+   PARTICLES
+   ========================================================= */
+
+function createExplosion(pos){
+
+    for(let i=0;i<12;i++){
+
+        const p =
+            new THREE.Mesh(
+                ne
