@@ -2,154 +2,266 @@ import * as THREE from
 "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
 
-/* =========================
-   GAME VARIABLES
-========================= */
+/* =========================================================
+   FINAL JOURNEY
+   ORIGINAL 3D HORROR TRAIN GAME
+   ========================================================= */
+
+
+/* ================= DOM ================= */
+
+const startScreen = document.getElementById("startScreen");
+const startButton = document.getElementById("startButton");
+const playerNameInput = document.getElementById("playerName");
+const startError = document.getElementById("startError");
+
+const game = document.getElementById("game");
+const threeContainer = document.getElementById("threeContainer");
+
+const healthEl = document.getElementById("health");
+const fearEl = document.getElementById("fear");
+const batteryEl = document.getElementById("battery");
+const staminaEl = document.getElementById("stamina");
+
+const clockEl = document.getElementById("clock");
+const coachEl = document.getElementById("coach");
+const playerDisplay = document.getElementById("playerDisplay");
+
+const missionEl = document.getElementById("mission");
+
+const messageBox = document.getElementById("messageBox");
+const messageEl = document.getElementById("message");
+
+const interactionEl = document.getElementById("interaction");
+
+const damageFlash = document.getElementById("damageFlash");
+const redOverlay = document.getElementById("redOverlay");
+const staticEffect = document.getElementById("staticEffect");
+const bloodOverlay = document.getElementById("bloodOverlay");
+
+const phone = document.getElementById("phone");
+const phoneTime = document.getElementById("phoneTime");
+const phoneMessage = document.getElementById("phoneMessage");
+const closePhone = document.getElementById("closePhone");
+
+const storyScreen = document.getElementById("storyScreen");
+const storyText = document.getElementById("storyText");
+
+const climaxScreen = document.getElementById("climaxScreen");
+const climaxCounter = document.getElementById("climaxCounter");
+
+const endingScreen = document.getElementById("endingScreen");
+const endingTitle = document.getElementById("endingTitle");
+const endingText = document.getElementById("endingText");
+const restartButton = document.getElementById("restartButton");
+
+
+/* ================= GAME STATE ================= */
+
+let playerName = "यात्री";
 
 let scene;
 let camera;
 let renderer;
 
-let player;
-
-let clock;
-
-let keys = {};
-
 let flashlight;
+let ambientLight;
+
+let ghost;
+let ghostLight;
+
+let clock = new THREE.Clock();
+
+let gameStarted = false;
 
 let flashlightOn = true;
 
 let health = 100;
 let fear = 0;
 let battery = 100;
+let stamina = 100;
 
-let playerName = "";
+let trainPosition = 0;
 
-let started = false;
+let currentCoach = 1;
 
-let canInteract = false;
+let elapsed = 0;
+
+let eventTimer = 0;
+
+let messageTimer = 0;
+
+let climaxStarted = false;
+
+let climaxTime = 30;
+
+let ending = false;
+
+let phoneOpen = false;
+
+let canMove = true;
+
+let shakePower = 0;
+
+let horrorLevel = 0;
+
+let doorObjects = [];
+
+let interactObjects = [];
+
+let flickerLights = [];
+
+let trainObjects = [];
+
+let footstepsTimer = 0;
 
 
-/* =========================
-   DOM
-========================= */
+/* ================= PLAYER ================= */
 
-const startScreen =
-    document.getElementById("startScreen");
+const player = {
 
-const gameUI =
-    document.getElementById("gameUI");
+    position: new THREE.Vector3(
+        0,
+        1.65,
+        7
+    ),
 
-const startButton =
-    document.getElementById("startButton");
+    velocity: new THREE.Vector3(),
 
-const playerNameInput =
-    document.getElementById("playerName");
+    speed: 3.2,
 
-const errorBox =
-    document.getElementById("error");
+    runSpeed: 5.5,
 
-const messageBox =
-    document.getElementById("message");
+    rotationY: Math.PI,
+
+    rotationX: 0
+
+};
 
 
-/* =========================
-   START BUTTON
-========================= */
+/* ================= KEYBOARD ================= */
 
-startButton.addEventListener(
-    "click",
-    startGame
-);
+const keys = {};
+
+window.addEventListener("keydown", e => {
+
+    keys[e.key.toLowerCase()] = true;
+
+    if (e.key.toLowerCase() === "f") {
+
+        toggleFlashlight();
+
+    }
+
+    if (e.key.toLowerCase() === "e") {
+
+        interact();
+
+    }
+
+    if (e.key.toLowerCase() === "p") {
+
+        togglePhone();
+
+    }
+
+});
+
+window.addEventListener("keyup", e => {
+
+    keys[e.key.toLowerCase()] = false;
+
+});
+
+
+/* =========================================================
+   START GAME
+   ========================================================= */
+
+startButton.addEventListener("click", startGame);
 
 
 function startGame() {
 
-    const name =
-        playerNameInput.value.trim();
+    playerName = playerNameInput.value.trim();
 
+    if (!playerName) {
 
-    if (!name) {
-
-        errorBox.textContent =
-            "⚠️ पहले अपना नाम लिखें।";
+        startError.textContent =
+            "पहले अपना नाम लिखो...";
 
         playerNameInput.focus();
 
         return;
+
     }
 
+    startError.textContent = "";
 
-    playerName = name;
+    startScreen.style.display = "none";
 
-    document.getElementById(
-        "nameDisplay"
-    ).textContent = playerName;
+    game.style.display = "block";
 
+    gameStarted = true;
 
-    startScreen.classList.add(
-        "hidden"
-    );
-
-    gameUI.classList.remove(
-        "hidden"
-    );
-
+    playerDisplay.textContent = playerName;
 
     init3D();
 
-    started = true;
+    startAudio();
 
+    showStory(
 
-    showMessage(
-        `स्वागत है ${playerName}... ट्रेन चलने वाली है।`
+        `रात के 2:13 बजे...
+
+        ${playerName}, तुमने अपनी आँखें खोलीं।
+
+        ट्रेन चल रही थी।
+
+        तुम्हें याद नहीं था कि तुम इसमें चढ़े कब।
+
+        सामने की सीट खाली थी।
+
+        लेकिन शीशे में...
+
+        कोई तुम्हारे पीछे खड़ा था।`
+
     );
+
 }
 
 
-/* =========================
-   THREE.JS INITIALIZATION
-========================= */
+/* =========================================================
+   THREE JS
+   ========================================================= */
 
 function init3D() {
 
-    scene =
-        new THREE.Scene();
-
+    scene = new THREE.Scene();
 
     scene.background =
         new THREE.Color(0x020202);
 
-
     scene.fog =
-        new THREE.Fog(
+        new THREE.FogExp2(
             0x020202,
-            2,
-            30
+            0.075
         );
-
-
-    clock =
-        new THREE.Clock();
 
 
     /* CAMERA */
 
     camera =
         new THREE.PerspectiveCamera(
-            70,
+            75,
             window.innerWidth /
             window.innerHeight,
             0.05,
-            100
+            1000
         );
 
-
-    camera.position.set(
-        0,
-        1.7,
-        7
+    camera.position.copy(
+        player.position
     );
 
 
@@ -157,67 +269,41 @@ function init3D() {
 
     renderer =
         new THREE.WebGLRenderer({
-            antialias: true
+            antialias: true,
+            powerPreference: "high-performance"
         });
-
 
     renderer.setPixelRatio(
         Math.min(
             window.devicePixelRatio,
-            2
+            1.8
         )
     );
-
 
     renderer.setSize(
         window.innerWidth,
         window.innerHeight
     );
 
+    renderer.shadowMap.enabled = true;
 
-    renderer.shadowMap.enabled =
-        true;
+    renderer.shadowMap.type =
+        THREE.PCFSoftShadowMap;
 
-
-    document.body.appendChild(
+    threeContainer.appendChild(
         renderer.domElement
     );
 
 
-    /* PLAYER */
-
-    player = {
-
-        position:
-            new THREE.Vector3(
-                0,
-                1.7,
-                7
-            ),
-
-        rotation: 0,
-
-        speed: 3
-
-    };
-
-
     /* LIGHT */
 
-    const ambient =
-        new THREE.HemisphereLight(
-            0x777777,
-            0x050505,
-            0.45
+    ambientLight =
+        new THREE.AmbientLight(
+            0x202020,
+            1
         );
 
-
-    scene.add(ambient);
-
-
-    /* TRAIN */
-
-    createTrain();
+    scene.add(ambientLight);
 
 
     /* FLASHLIGHT */
@@ -225,66 +311,71 @@ function init3D() {
     flashlight =
         new THREE.SpotLight(
             0xffffff,
-            8,
-            18,
-            Math.PI / 8,
-            0.5,
-            1
+            7,
+            28,
+            Math.PI / 7,
+            0.55,
+            1.2
         );
-
 
     flashlight.position.set(
         0,
-        1.7,
-        6.5
+        1.65,
+        0
     );
 
+    flashlight.castShadow = true;
 
-    scene.add(flashlight);
-
-
-    camera.add(
-        flashlight
-    );
-
+    camera.add(flashlight);
 
     scene.add(camera);
 
 
+    /* TRAIN */
+
+    createTrain();
+
+
+    /* GHOST */
+
+    createGhost();
+
+
     /* EVENTS */
+
+    createEventObjects();
+
 
     window.addEventListener(
         "resize",
-        onResize
+        resize
     );
 
 
-    document.addEventListener(
-        "keydown",
-        keyDown
+    /* MOUSE */
+
+    setupMouse();
+
+
+    /* TOUCH */
+
+    setupTouch();
+
+
+    /* START LOOP */
+
+    renderer.setAnimationLoop(
+        gameLoop
     );
 
-
-    document.addEventListener(
-        "keyup",
-        keyUp
-    );
-
-
-    setupMobileControls();
-
-
-    animate();
 }
 
 
-/* =========================
-   CREATE TRAIN
-========================= */
+/* =========================================================
+   TRAIN
+   ========================================================= */
 
 function createTrain() {
-
-    /* FLOOR */
 
     const floorMaterial =
         new THREE.MeshStandardMaterial({
@@ -292,21 +383,39 @@ function createTrain() {
             roughness: 0.9
         });
 
+    const wallMaterial =
+        new THREE.MeshStandardMaterial({
+            color: 0x343434,
+            roughness: 0.8
+        });
+
+    const ceilingMaterial =
+        new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            roughness: 1
+        });
+
+    const metalMaterial =
+        new THREE.MeshStandardMaterial({
+            color: 0x555555,
+            metalness: .7,
+            roughness: .35
+        });
+
+
+    /* FLOOR */
 
     const floor =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                5,
-                0.2,
-                30
+                8,
+                .25,
+                70
             ),
             floorMaterial
         );
 
-
-    floor.position.y =
-        -0.1;
-
+    floor.position.y = -.15;
 
     floor.receiveShadow = true;
 
@@ -318,60 +427,56 @@ function createTrain() {
     const ceiling =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                5,
-                0.2,
-                30
+                8,
+                .25,
+                70
             ),
-            new THREE.MeshStandardMaterial({
-                color: 0x181818
-            })
+            ceilingMaterial
         );
 
-
-    ceiling.position.y =
-        3.6;
-
+    ceiling.position.y = 3.8;
 
     scene.add(ceiling);
 
 
-    /* WALLS */
-
-    const wallMaterial =
-        new THREE.MeshStandardMaterial({
-            color: 0x303030,
-            roughness: 1
-        });
-
+    /* LEFT WALL */
 
     const leftWall =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                0.2,
-                3.6,
-                30
+                .3,
+                4,
+                70
             ),
             wallMaterial
         );
 
-
     leftWall.position.set(
-        -2.5,
+        -4,
         1.8,
         0
     );
 
-
     scene.add(leftWall);
 
 
+    /* RIGHT WALL */
+
     const rightWall =
-        leftWall.clone();
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .3,
+                4,
+                70
+            ),
+            wallMaterial
+        );
 
-
-    rightWall.position.x =
-        2.5;
-
+    rightWall.position.set(
+        4,
+        1.8,
+        0
+    );
 
     scene.add(rightWall);
 
@@ -379,18 +484,41 @@ function createTrain() {
     /* WINDOWS */
 
     for (
-        let z = -13;
-        z <= 13;
-        z += 3
+        let z = -34;
+        z <= 34;
+        z += 4
     ) {
 
         createWindow(
-            -2.38,
+            -3.82,
+            2.3,
             z
         );
 
         createWindow(
-            2.38,
+            3.82,
+            2.3,
+            z
+        );
+
+    }
+
+
+    /* SEATS */
+
+    for (
+        let z = -32;
+        z <= 32;
+        z += 4
+    ) {
+
+        createSeat(
+            -2.5,
+            z
+        );
+
+        createSeat(
+            2.5,
             z
         );
 
@@ -400,726 +528,671 @@ function createTrain() {
     /* BERTHS */
 
     for (
-        let z = -12;
-        z <= 12;
+        let z = -32;
+        z <= 32;
         z += 4
     ) {
 
-        createBerth(
-            -1.7,
+        createBerths(
+            -3.0,
             z
         );
 
-        createBerth(
-            1.7,
+        createBerths(
+            3.0,
             z
         );
-
-    }
-
-
-    /* LIGHTS */
-
-    for (
-        let z = -12;
-        z <= 12;
-        z += 4
-    ) {
-
-        const light =
-            new THREE.PointLight(
-                0xffeeee,
-                1.2,
-                5
-            );
-
-
-        light.position.set(
-            0,
-            3.1,
-            z
-        );
-
-
-        scene.add(light);
 
     }
 
 
     /* DOORS */
 
-    createDoor(
-        0,
-        -14.7
-    );
+    for (
+        let z = -35;
+        z <= 35;
+        z += 8
+    ) {
+
+        createDoor(
+            0,
+            z
+        );
+
+    }
 
 
-    createDoor(
-        0,
-        14.7
-    );
-
-
-    /* SEATS */
+    /* CEILING LIGHTS */
 
     for (
-        let z = -11;
-        z <= 11;
+        let z = -32;
+        z <= 32;
         z += 4
     ) {
 
-        createSeat(
-            -0.8,
-            z
-        );
-
-        createSeat(
-            0.8,
-            z
-        );
+        createCeilingLight(z);
 
     }
+
+
+    /* PANTRY */
+
+    createPantry();
+
+
+    /* EXIT SIGN */
+
+    createSign(
+        0,
+        3.2,
+        -34,
+        "EXIT"
+    );
 
 }
 
 
-/* =========================
+/* =========================================================
    WINDOW
-========================= */
+   ========================================================= */
 
-function createWindow(
-    x,
-    z
-) {
+function createWindow(x, y, z) {
 
-    const window =
+    const frame =
+        new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            metalness: .8
+        });
+
+    const glass =
+        new THREE.MeshBasicMaterial({
+            color: 0x02060a
+        });
+
+    const outer =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                0.08,
-                1.3,
-                1.7
+                .08,
+                1.2,
+                2.1
             ),
-            new THREE.MeshBasicMaterial({
-                color: 0x02040a
-            })
+            glass
         );
 
-
-    window.position.set(
+    outer.position.set(
         x,
-        2.15,
+        y,
         z
     );
 
-
-    scene.add(window);
-
-}
+    scene.add(outer);
 
 
-/* =========================
-   BERTH
-========================= */
-
-function createBerth(
-    x,
-    z
-) {
-
-    for (
-        let y = 1.1;
-        y <= 2.7;
-        y += 0.75
-    ) {
-
-        const bed =
-            new THREE.Mesh(
-                new THREE.BoxGeometry(
-                    1.3,
-                    0.15,
-                    2.5
-                ),
-                new THREE.MeshStandardMaterial({
-                    color: 0x555555
-                })
-            );
-
-
-        bed.position.set(
-            x,
-            y,
-            z
+    const top =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .2,
+                .1,
+                2.3
+            ),
+            frame
         );
 
+    top.position.set(
+        x,
+        y + .65,
+        z
+    );
 
-        scene.add(bed);
+    scene.add(top);
 
-    }
+
+    const bottom =
+        top.clone();
+
+    bottom.position.y =
+        y - .65;
+
+    scene.add(bottom);
 
 }
 
 
-/* =========================
+/* =========================================================
    SEAT
-========================= */
+   ========================================================= */
 
-function createSeat(
-    x,
-    z
-) {
+function createSeat(x, z) {
+
+    const material =
+        new THREE.MeshStandardMaterial({
+            color: 0x172020,
+            roughness: 1
+        });
 
     const seat =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                0.9,
-                0.7,
-                1.2
+                1.8,
+                .45,
+                1.5
             ),
-            new THREE.MeshStandardMaterial({
-                color: 0x292929
-            })
+            material
         );
-
 
     seat.position.set(
         x,
-        0.35,
+        .65,
         z
     );
 
+    seat.castShadow = true;
 
     scene.add(seat);
+
+
+    const back =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                1.8,
+                1.4,
+                .35
+            ),
+            material
+        );
+
+    back.position.set(
+        x,
+        1.35,
+        z + (x < 0 ? .5 : -.5)
+    );
+
+    scene.add(back);
 
 }
 
 
-/* =========================
-   DOOR
-========================= */
+/* =========================================================
+   BERTH
+   ========================================================= */
 
-function createDoor(
-    x,
-    z
-) {
+function createBerths(x, z) {
+
+    const material =
+        new THREE.MeshStandardMaterial({
+            color: 0x303333,
+            roughness: .95
+        });
+
+
+    for (
+        let level = 0;
+        level < 2;
+        level++
+    ) {
+
+        const berth =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    .8,
+                    .18,
+                    2.7
+                ),
+                material
+            );
+
+        berth.position.set(
+            x,
+            1.2 + level * .9,
+            z
+        );
+
+        berth.castShadow = true;
+
+        scene.add(berth);
+
+    }
+
+}
+
+
+/* =========================================================
+   DOOR
+   ========================================================= */
+
+function createDoor(x, z) {
+
+    const material =
+        new THREE.MeshStandardMaterial({
+            color: 0x101010,
+            metalness: .6,
+            roughness: .7
+        });
 
     const door =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                1.5,
-                2.8,
-                0.15
+                2.4,
+                3.1,
+                .18
             ),
-            new THREE.MeshStandardMaterial({
-                color: 0x111111
-            })
+            material
         );
-
 
     door.position.set(
         x,
-        1.4,
+        1.55,
         z
     );
 
-
     scene.add(door);
 
-}
-
-
-/* =========================
-   KEYBOARD
-========================= */
-
-function keyDown(event) {
-
-    keys[
-        event.key.toLowerCase()
-    ] = true;
-
-
-    if (
-        event.key.toLowerCase() === "e"
-    ) {
-
-        interact();
-
-    }
-
-
-    if (
-        event.key.toLowerCase() === "f"
-    ) {
-
-        toggleFlashlight();
-
-    }
+    doorObjects.push(door);
 
 }
 
 
-function keyUp(event) {
+/* =========================================================
+   CEILING LIGHT
+   ========================================================= */
 
-    keys[
-        event.key.toLowerCase()
-    ] = false;
+function createCeilingLight(z) {
+
+    const lamp =
+        new THREE.PointLight(
+            0xffdca0,
+            1.5,
+            8
+        );
+
+    lamp.position.set(
+        0,
+        3.3,
+        z
+    );
+
+    scene.add(lamp);
+
+    flickerLights.push(lamp);
+
+
+    const bulb =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                1.1,
+                .08,
+                .18
+            ),
+            new THREE.MeshBasicMaterial({
+                color: 0xffffff
+            })
+        );
+
+    bulb.position.copy(
+        lamp.position
+    );
+
+    scene.add(bulb);
 
 }
 
 
-/* =========================
-   MOVEMENT
-========================= */
+/* =========================================================
+   PANTRY
+   ========================================================= */
 
-function updateMovement(
-    delta
+function createPantry() {
+
+    const material =
+        new THREE.MeshStandardMaterial({
+            color: 0x292929,
+            metalness: .5,
+            roughness: .8
+        });
+
+    const counter =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                2.8,
+                1,
+                2
+            ),
+            material
+        );
+
+    counter.position.set(
+        0,
+        .5,
+        -28
+    );
+
+    scene.add(counter);
+
+
+    const machine =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                1,
+                1.4,
+                .7
+            ),
+            material
+        );
+
+    machine.position.set(
+        0,
+        1.7,
+        -28
+    );
+
+    scene.add(machine);
+
+}
+
+
+/* =========================================================
+   SIGN
+   ========================================================= */
+
+function createSign(
+    x,
+    y,
+    z,
+    text
 ) {
 
-    if (!started) return;
+    const canvas =
+        document.createElement("canvas");
 
+    canvas.width = 256;
+    canvas.height = 64;
 
-    const speed =
-        player.speed * delta;
+    const ctx =
+        canvas.getContext("2d");
 
+    ctx.fillStyle = "#111";
 
-    if (keys["w"]) {
+    ctx.fillRect(
+        0,
+        0,
+        256,
+        64
+    );
 
-        camera.translateZ(
-            -speed
+    ctx.fillStyle = "#ddd";
+
+    ctx.font =
+        "bold 32px Arial";
+
+    ctx.textAlign =
+        "center";
+
+    ctx.fillText(
+        text,
+        128,
+        42
+    );
+
+    const texture =
+        new THREE.CanvasTexture(canvas);
+
+    const material =
+        new THREE.MeshBasicMaterial({
+            map: texture
+        });
+
+    const mesh =
+        new THREE.Mesh(
+            new THREE.PlaneGeometry(
+                2,
+                .5
+            ),
+            material
         );
 
-    }
+    mesh.position.set(
+        x,
+        y,
+        z
+    );
 
+    mesh.rotation.y =
+        Math.PI;
 
-    if (keys["s"]) {
-
-        camera.translateZ(
-            speed
-        );
-
-    }
-
-
-    if (keys["a"]) {
-
-        camera.translateX(
-            -speed
-        );
-
-    }
-
-
-    if (keys["d"]) {
-
-        camera.translateX(
-            speed
-        );
-
-    }
-
-
-    /* KEEP PLAYER INSIDE TRAIN */
-
-    camera.position.x =
-        THREE.MathUtils.clamp(
-            camera.position.x,
-            -1.7,
-            1.7
-        );
-
-
-    camera.position.z =
-        THREE.MathUtils.clamp(
-            camera.position.z,
-            -13.5,
-            13.5
-        );
-
-
-    camera.position.y =
-        1.7;
+    scene.add(mesh);
 
 }
 
 
-/* =========================
-   INTERACTION
-========================= */
+/* =========================================================
+   GHOST
+   ========================================================= */
 
-function interact() {
+function createGhost() {
 
-    if (!started) return;
-
-
-    const distance =
-        camera.position.z;
+    const group =
+        new THREE.Group();
 
 
-    if (
-        Math.abs(distance) > 12
-    ) {
+    const bodyMaterial =
+        new THREE.MeshBasicMaterial({
+            color: 0xcccccc,
+            transparent: true,
+            opacity: .12
+        });
 
-        showMessage(
-            "दरवाज़ा बहुत पास है… लेकिन अभी बंद है।"
+
+    const body =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                .55,
+                .8,
+                2,
+                16
+            ),
+            bodyMaterial
         );
 
-        fear += 3;
+    body.position.y = 1.3;
 
-        updateStats();
-
-        return;
-    }
+    group.add(body);
 
 
-    fear += 2;
+    const head =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .38,
+                16,
+                16
+            ),
+            bodyMaterial
+        );
+
+    head.position.y = 2.6;
+
+    group.add(head);
 
 
-    showMessage(
-        "तुमने आसपास देखा… कुछ अजीब महसूस हो रहा है।"
+    const eyeMaterial =
+        new THREE.MeshBasicMaterial({
+            color: 0xff0000
+        });
+
+
+    const eye1 =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .045,
+                8,
+                8
+            ),
+            eyeMaterial
+        );
+
+    eye1.position.set(
+        -.13,
+        2.65,
+        -.34
+    );
+
+    group.add(eye1);
+
+
+    const eye2 =
+        eye1.clone();
+
+    eye2.position.x = .13;
+
+    group.add(eye2);
+
+
+    group.position.set(
+        0,
+        -10,
+        -20
     );
 
 
-    updateStats();
+    ghostLight =
+        new THREE.PointLight(
+            0xff0000,
+            2,
+            5
+        );
+
+    group.add(
+        ghostLight
+    );
+
+
+    scene.add(group);
+
+    ghost = group;
 
 }
 
 
-/* =========================
-   FLASHLIGHT
-========================= */
+/* =========================================================
+   EVENT OBJECTS
+   ========================================================= */
 
-function toggleFlashlight() {
+function createEventObjects() {
 
-    if (battery <= 0) {
-
-        showMessage(
-            "🔦 टॉर्च की battery खत्म हो गई!"
+    const note =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .6,
+                .02,
+                .8
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x999999
+            })
         );
 
-        return;
-    }
+    note.position.set(
+        2.5,
+        1.2,
+        -12
+    );
+
+    scene.add(note);
+
+    interactObjects.push(note);
 
 
-    flashlightOn =
-        !flashlightOn;
+    const suitcase =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .8,
+                .7,
+                1.3
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x151515
+            })
+        );
 
+    suitcase.position.set(
+        -2.5,
+        .4,
+        -20
+    );
 
-    flashlight.visible =
-        flashlightOn;
+    scene.add(suitcase);
 
-
-    showMessage(
-        flashlightOn
-            ? "🔦 टॉर्च ON"
-            : "🔦 टॉर्च OFF"
+    interactObjects.push(
+        suitcase
     );
 
 }
 
 
-/* =========================
-   RANDOM HORROR
-========================= */
+/* =========================================================
+   MOUSE LOOK
+   ========================================================= */
 
-let horrorTimer = 0;
+function setupMouse() {
 
+    let dragging = false;
 
-function horrorEvents(
-    delta
-) {
-
-    horrorTimer += delta;
+    let lastX = 0;
+    let lastY = 0;
 
 
-    if (
-        horrorTimer < 12
-    ) return;
+    renderer.domElement.addEventListener(
+        "pointerdown",
+        e => {
 
+            dragging = true;
 
-    horrorTimer = 0;
-
-
-    const chance =
-        Math.random();
-
-
-    if (chance < 0.45) {
-
-        fear += 8;
-
-
-        showMessage(
-            `तुम्हें लगा किसी ने ${playerName} नाम से पुकारा…`
-        );
-
-
-        flashLights();
-
-    }
-
-
-    else if (chance < 0.75) {
-
-        fear += 12;
-
-
-        showMessage(
-            "👻 खिड़की के बाहर कुछ बहुत तेज़ी से गुज़रा…"
-        );
-
-    }
-
-
-    else {
-
-        fear += 15;
-
-
-        showMessage(
-            "⚠️ पीछे से कदमों की आवाज़ आ रही है…"
-        );
-
-    }
-
-
-    updateStats();
-
-
-    if (fear >= 100) {
-
-        showMessage(
-            "😨 तुम्हारा डर बहुत बढ़ गया है..."
-        );
-
-    }
-
-}
-
-
-/* =========================
-   LIGHT FLICKER
-========================= */
-
-function flashLights() {
-
-    scene.traverse(
-        function (object) {
-
-            if (
-                object.isPointLight
-            ) {
-
-                object.visible = false;
-
-            }
+            lastX = e.clientX;
+            lastY = e.clientY;
 
         }
     );
 
 
-    setTimeout(
-        function () {
+    window.addEventListener(
+        "pointerup",
+        () => {
 
-            scene.traverse(
-                function (object) {
-
-                    if (
-                        object.isPointLight
-                    ) {
-
-                        object.visible = true;
-
-                    }
-
-                }
-            );
-
-        },
-        350
-    );
-
-}
-
-
-/* =========================
-   STATS
-========================= */
-
-function updateStats() {
-
-    fear =
-        Math.min(
-            100,
-            Math.max(0, fear)
-        );
-
-
-    health =
-        Math.min(
-            100,
-            Math.max(0, health)
-        );
-
-
-    battery =
-        Math.min(
-            100,
-            Math.max(0, battery)
-        );
-
-
-    document.getElementById(
-        "health"
-    ).textContent = health;
-
-
-    document.getElementById(
-        "fear"
-    ).textContent = fear;
-
-
-    document.getElementById(
-        "battery"
-    ).textContent = battery;
-
-}
-
-
-/* =========================
-   MESSAGE
-========================= */
-
-let messageTimer;
-
-
-function showMessage(text) {
-
-    messageBox.textContent =
-        text;
-
-
-    clearTimeout(
-        messageTimer
-    );
-
-
-    messageTimer =
-        setTimeout(
-            function () {
-
-                messageBox.textContent =
-                    "";
-
-            },
-            5000
-        );
-
-}
-
-
-/* =========================
-   MOBILE
-========================= */
-
-function setupMobileControls() {
-
-    holdButton(
-        "forward",
-        "w"
-    );
-
-    holdButton(
-        "backward",
-        "s"
-    );
-
-    holdButton(
-        "left",
-        "a"
-    );
-
-    holdButton(
-        "right",
-        "d"
-    );
-
-
-    document.getElementById(
-        "interact"
-    ).addEventListener(
-        "click",
-        interact
-    );
-
-
-    document.getElementById(
-        "flashlight"
-    ).addEventListener(
-        "click",
-        toggleFlashlight
-    );
-
-}
-
-
-function holdButton(
-    id,
-    key
-) {
-
-    const button =
-        document.getElementById(id);
-
-
-    button.addEventListener(
-        "touchstart",
-        function (event) {
-
-            event.preventDefault();
-
-            keys[key] = true;
+            dragging = false;
 
         }
     );
 
 
-    button.addEventListener(
-        "touchend",
-        function (event) {
+    window.addEventListener(
+        "pointermove",
+        e => {
 
-            event.preventDefault();
+            if (!dragging) return;
 
-            keys[key] = false;
+            const dx =
+                e.clientX - lastX;
 
-        }
-    );
+            const dy =
+                e.clientY - lastY;
 
-
-    button.addEventListener(
-        "mousedown",
-        function () {
-
-            keys[key] = true;
-
-        }
-    );
+            lastX = e.clientX;
+            lastY = e.clientY;
 
 
-    button.addEventListener(
-        "mouseup",
-        function () {
+            player.rotationY -=
+                dx * .004;
 
-            keys[key] = false;
+            player.rotationX -=
+                dy * .003;
 
-        }
-    );
-
-
-    button.addEventListener(
-        "mouseleave",
-        function () {
-
-            keys[key] = false;
+            player.rotationX =
+                Math.max(
+                    -.9,
+                    Math.min(
+                        .9,
+                        player.rotationX
+                    )
+                );
 
         }
     );
@@ -1127,74 +1200,30 @@ function holdButton(
 }
 
 
-/* =========================
-   RESIZE
-========================= */
+/* =========================================================
+   TOUCH LOOK
+   ========================================================= */
 
-function onResize() {
+function setupTouch() {
 
-    if (!camera || !renderer) {
-        return;
-    }
+    const buttons = {
 
+        upBtn: "w",
+        downBtn: "s",
+        leftBtn: "a",
+        rightBtn: "d"
 
-    camera.aspect =
-        window.innerWidth /
-        window.innerHeight;
-
-
-    camera.updateProjectionMatrix();
+    };
 
 
-    renderer.setSize(
-        window.innerWidth,
-        window.innerHeight
-    );
+    Object.entries(buttons)
+        .forEach(([id,key]) => {
 
-}
+            const button =
+                document.getElementById(id);
 
+            button.addEventListener(
+                "touchstart",
+                e => {
 
-/* =========================
-   GAME LOOP
-========================= */
-
-function animate() {
-
-    requestAnimationFrame(
-        animate
-    );
-
-
-    const delta =
-        Math.min(
-            clock.getDelta(),
-            0.05
-        );
-
-
-    updateMovement(delta);
-
-
-    horrorEvents(delta);
-
-
-    if (
-        flashlightOn &&
-        battery > 0
-    ) {
-
-        battery -=
-            delta * 0.15;
-
-    }
-
-
-    updateStats();
-
-
-    renderer.render(
-        scene,
-        camera
-    );
-
-}
+               
