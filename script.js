@@ -1,5 +1,10 @@
-import * as THREE from
-"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+/* =========================================================
+   FINAL JOURNEY
+   ORIGINAL 3D HORROR TRAIN GAME
+   ========================================================= */
+
+const startScreen = document.getElementById("startScreen");
+const startButton = document.getElementById("startButton");
 
 
 /* =========================================================
