@@ -1,295 +1,93 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>अंतिम सफ़र — The Last Journey</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>अंतिम सफ़र — 3D</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-<script>
-alert("HTML FILE WORKING!");
-</script>
-<div id="game">
 
-<!-- START -->
-<section id="startScreen" class="screen">
-    <div class="box">
-        <div class="smallTitle">एक मौलिक भारतीय हॉरर गेम</div>
-
+<div id="startScreen">
+    <div class="startBox">
         <h1>अंतिम सफ़र</h1>
-        <h3>THE LAST JOURNEY</h3>
+        <p>THE LAST JOURNEY</p>
 
-        <p class="quote">
-            “हर सफ़र मंज़िल तक नहीं पहुँचता…”
-        </p>
+        <div class="line"></div>
+
+        <h2>एक 3D भारतीय हॉरर अनुभव</h2>
 
         <input
-            id="nameInput"
+            id="playerName"
             type="text"
             maxlength="20"
-            autocomplete="off"
             placeholder="अपना नाम लिखें"
         >
 
-        <button type="button" id="startBtn">
-            सफ़र शुरू करें
+        <button id="startButton">
+            🚂 सफ़र शुरू करें
         </button>
 
-        <p id="startError"></p>
+        <div id="error"></div>
 
-        <p class="help">
-            मोबाइल: नीचे के बटन इस्तेमाल करें<br>
-            PC: A/D या ←/→ • E = Interact • I = Inventory • P = Phone
-        </p>
+        <small>
+            मोबाइल: स्क्रीन पर दिए controls इस्तेमाल करें<br>
+            PC: W A S D से चलें
+        </small>
     </div>
-</section>
+</div>
 
 
-<!-- STORY -->
-<section id="storyScreen" class="screen hidden">
-    <div class="box story">
+<div id="gameUI" class="hidden">
 
-        <div class="smallTitle">
-            रात 11:47 • प्लेटफ़ॉर्म 6
+    <div id="topBar">
+        <span id="nameDisplay">यात्री</span>
+
+        <span>
+            ❤️ <b id="health">100</b>
+            &nbsp;&nbsp;
+            😨 <b id="fear">0</b>
+            &nbsp;&nbsp;
+            🔦 <b id="battery">100</b>
+        </span>
+    </div>
+
+
+    <div id="crosshair">+</div>
+
+
+    <div id="message">
+        ट्रेन में आपका स्वागत है...
+    </div>
+
+
+    <div id="mobileControls">
+
+        <div class="movePad">
+            <button id="forward">▲</button>
+
+            <div>
+                <button id="left">◀</button>
+                <button id="backward">▼</button>
+                <button id="right">▶</button>
+            </div>
         </div>
 
-        <h2>आख़िरी ट्रेन</h2>
-
-        <p id="storyText"></p>
-
-        <button type="button" id="boardBtn">
-            ट्रेन में चढ़ें
+        <button id="interact">
+            E
         </button>
 
-    </div>
-</section>
-
-
-<!-- GAME -->
-<section id="gameScreen" class="hidden">
-
-<header>
-
-    <div>
-        <strong id="playerName">यात्री</strong>
-        <span id="coachName"> • Coach 1</span>
-    </div>
-
-    <div class="stats">
-        ❤️ <span id="health">100</span>
-        😨 <span id="fear">0</span>
-        🔦 <span id="battery">100</span>
-    </div>
-
-</header>
-
-
-<main>
-
-<!-- TRAIN -->
-<div id="visual">
-
-    <div class="window">
-        <div class="rain"></div>
-        <div class="light light1"></div>
-        <div class="light light2"></div>
-    </div>
-
-    <div class="upperBed"></div>
-    <div class="middleBed"></div>
-    <div class="lowerBed"></div>
-
-    <div class="seat"></div>
-
-    <div class="trainDoor">
-        <span id="doorText">COACH 1</span>
-    </div>
-
-    <div id="ghost"></div>
-
-    <div id="eyes">
-        <i></i>
-        <i></i>
-    </div>
-
-</div>
-
-
-<!-- EVENT -->
-<div id="storyPanel">
-
-    <span id="eventTag">रात का सफ़र</span>
-
-    <h2 id="eventTitle">
-        ट्रेन चल पड़ी…
-    </h2>
-
-    <p id="eventText">
-        बाहर बारिश हो रही है।
-        कुछ यात्री सो रहे हैं।
-    </p>
-
-    <div id="choices"></div>
-
-</div>
-
-</main>
-
-
-<footer>
-
-<div class="mission">
-    <span>🎯 मिशन</span>
-
-    <b id="missionText">
-        Coach 3 तक पहुँचो।
-    </b>
-</div>
-
-
-<div class="controls">
-
-    <button type="button" id="leftBtn">
-        ◀
-    </button>
-
-    <button type="button" id="interactBtn">
-        E
-        <small>Interact</small>
-    </button>
-
-    <button type="button" id="rightBtn">
-        ▶
-    </button>
-
-    <button type="button" id="inventoryBtn">
-        🎒
-    </button>
-
-    <button type="button" id="phoneBtn">
-        📱
-    </button>
-
-    <button type="button" id="settingsBtn">
-        ⚙️
-    </button>
-
-</div>
-
-</footer>
-
-</section>
-
-
-<!-- INVENTORY -->
-<div id="inventory" class="popup hidden">
-
-    <button type="button" class="close" data-close="inventory">
-        ×
-    </button>
-
-    <h2>🎒 सामान</h2>
-
-    <div id="inventoryItems"></div>
-
-</div>
-
-
-<!-- PHONE -->
-<div id="phone" class="popup hidden">
-
-    <button type="button" class="close" data-close="phone">
-        ×
-    </button>
-
-    <h2>📱 फोन</h2>
-
-    <div class="phone">
-
-        <div class="network">
-            NETWORK: ❌ नहीं
-        </div>
-
-        <div id="messages"></div>
-
-    </div>
-
-</div>
-
-
-<!-- SETTINGS -->
-<div id="settings" class="popup hidden">
-
-    <button type="button" class="close" data-close="settings">
-        ×
-    </button>
-
-    <h2>⚙️ सेटिंग्स</h2>
-
-    <label>
-        हॉरर स्तर
-
-        <select id="difficulty">
-
-            <option value="normal">
-                सामान्य
-            </option>
-
-            <option value="nightmare">
-                Nightmare 😈
-            </option>
-
-        </select>
-
-    </label>
-
-    <button type="button" id="saveBtn">
-        💾 Save Game
-    </button>
-
-    <button type="button" id="loadBtn">
-        📂 Load Game
-    </button>
-
-    <button type="button" id="newGameBtn" class="danger">
-        नई शुरुआत
-    </button>
-
-</div>
-
-
-<!-- END -->
-<section id="endingScreen" class="screen hidden">
-
-    <div class="box">
-
-        <div class="smallTitle">
-            सफ़र समाप्त
-        </div>
-
-        <h1 id="endingTitle"></h1>
-
-        <p id="endingText"></p>
-
-        <p id="endingStats"></p>
-
-        <button type="button" id="restartBtn">
-            फिर से खेलें
+        <button id="flashlight">
+            🔦
         </button>
 
     </div>
 
-</section>
-
 </div>
-<script>
-document.getElementById("startBtn").onclick = function () {
-    alert("BUTTON WORKING!");
-};
-</script>
-<script src="script.js"></script>
+
+
+<script type="module" src="script.js"></script>
 
 </body>
 </html>
