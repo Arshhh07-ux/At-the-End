@@ -1,625 +1,819 @@
-"use strict";
-
-/* =========================
-   GAME DATA
-========================= */
-
-let game = {
-    playerName: "",
-    coach: 1,
-    health: 100,
-    fear: 0,
-    battery: 100,
-    stamina: 100,
-
-    difficulty: "normal",
-
-    items: [
-        "📱 पुराना फोन",
-        "🔦 टॉर्च",
-        "🎫 ट्रेन टिकट"
-    ],
-
-    clues: 0,
-    events: 0,
-    playedMinutes: 0,
-
-    messages: [
-        "अज्ञात नंबर: अभी मत सोना।",
-        "अज्ञात नंबर: तुम जिस ट्रेन में हो… वह सामान्य ट्रेन नहीं है।"
-    ]
-};
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
 
 /* =========================
-   HELPER
+   GAME VARIABLES
 ========================= */
 
-function $(id) {
-    return document.getElementById(id);
-}
+let scene;
+let camera;
+let renderer;
 
+let player;
 
-function show(id) {
-    $(id).classList.remove("hidden");
-}
+let clock;
 
+let keys = {};
 
-function hide(id) {
-    $(id).classList.add("hidden");
-}
+let flashlight;
+
+let flashlightOn = true;
+
+let health = 100;
+let fear = 0;
+let battery = 100;
+
+let playerName = "";
+
+let started = false;
+
+let canInteract = false;
 
 
 /* =========================
-   START GAME
+   DOM
 ========================= */
 
-document.addEventListener("DOMContentLoaded", function () {
+const startScreen =
+    document.getElementById("startScreen");
 
-    const startBtn = $("startBtn");
+const gameUI =
+    document.getElementById("gameUI");
 
-    if (startBtn) {
-        startBtn.addEventListener("click", startGame);
-    }
+const startButton =
+    document.getElementById("startButton");
 
+const playerNameInput =
+    document.getElementById("playerName");
 
-    const boardBtn = $("boardBtn");
+const errorBox =
+    document.getElementById("error");
 
-    if (boardBtn) {
-        boardBtn.addEventListener("click", beginJourney);
-    }
-
-
-    $("leftBtn").addEventListener("click", function () {
-        moveCoach(-1);
-    });
-
-
-    $("rightBtn").addEventListener("click", function () {
-        moveCoach(1);
-    });
-
-
-    $("interactBtn").addEventListener("click", interact);
-
-
-    $("inventoryBtn").addEventListener(
-        "click",
-        openInventory
-    );
-
-
-    $("phoneBtn").addEventListener(
-        "click",
-        openPhone
-    );
-
-
-    $("settingsBtn").addEventListener(
-        "click",
-        function () {
-            openPopup("settings");
-        }
-    );
-
-
-    $("saveBtn").addEventListener(
-        "click",
-        saveGame
-    );
-
-
-    $("loadBtn").addEventListener(
-        "click",
-        loadGame
-    );
-
-
-    $("newGameBtn").addEventListener(
-        "click",
-        newGame
-    );
-
-
-    $("restartBtn").addEventListener(
-        "click",
-        function () {
-            location.reload();
-        }
-    );
-
-
-    document.querySelectorAll(".close").forEach(
-        function (button) {
-
-            button.addEventListener(
-                "click",
-                function () {
-
-                    const popup =
-                        button.getAttribute("data-close");
-
-                    closePopup(popup);
-                }
-            );
-
-        }
-    );
-
-
-    $("difficulty").addEventListener(
-        "change",
-        function () {
-
-            game.difficulty =
-                this.value;
-
-        }
-    );
-
-
-    /* KEYBOARD */
-
-    document.addEventListener(
-        "keydown",
-        function (event) {
-
-            if (
-                event.key === "ArrowLeft" ||
-                event.key.toLowerCase() === "a"
-            ) {
-                moveCoach(-1);
-            }
-
-            if (
-                event.key === "ArrowRight" ||
-                event.key.toLowerCase() === "d"
-            ) {
-                moveCoach(1);
-            }
-
-            if (event.key.toLowerCase() === "e") {
-                interact();
-            }
-
-            if (event.key.toLowerCase() === "i") {
-                openInventory();
-            }
-
-            if (event.key.toLowerCase() === "p") {
-                openPhone();
-            }
-
-        }
-    );
-
-});
+const messageBox =
+    document.getElementById("message");
 
 
 /* =========================
-   START
+   START BUTTON
 ========================= */
+
+startButton.addEventListener(
+    "click",
+    startGame
+);
+
 
 function startGame() {
 
     const name =
-        $("nameInput").value.trim();
+        playerNameInput.value.trim();
 
 
-    if (name.length === 0) {
+    if (!name) {
 
-        $("startError").textContent =
+        errorBox.textContent =
             "⚠️ पहले अपना नाम लिखें।";
 
-        $("nameInput").focus();
+        playerNameInput.focus();
 
         return;
     }
 
 
-    game.playerName = name;
+    playerName = name;
+
+    document.getElementById(
+        "nameDisplay"
+    ).textContent = playerName;
 
 
-    $("playerName").textContent =
-        name;
+    startScreen.classList.add(
+        "hidden"
+    );
 
-
-    $("storyText").textContent =
-        `रात के 11:47 बजे ${name} प्लेटफ़ॉर्म 6 पर अकेला खड़ा था। बारिश तेज़ थी। स्टेशन लगभग खाली था। अचानक एक पुरानी ट्रेन बिना किसी घोषणा के प्लेटफ़ॉर्म पर आकर रुकी। ट्रेन के दरवाज़े अपने आप खुल गए। अंदर से किसी ने धीरे से कहा — “चढ़ो…”`;
-
-
-    hide("startScreen");
-
-    show("storyScreen");
-
-
-    $("startError").textContent = "";
-}
-
-
-/* =========================
-   BOARD TRAIN
-========================= */
-
-function beginJourney() {
-
-    hide("storyScreen");
-
-    show("gameScreen");
-
-
-    updateUI();
-
-
-    setEvent(
-        "पहली रात",
-        "ट्रेन चल पड़ी…",
-        `तुम ट्रेन में चढ़ चुके हो। ${game.playerName}, बाहर अब स्टेशन दिखाई नहीं दे रहा। खिड़की के बाहर सिर्फ अंधेरा और बारिश है।`
+    gameUI.classList.remove(
+        "hidden"
     );
 
 
-    setMission(
-        "Coach 3 तक पहुँचो।"
-    );
+    init3D();
+
+    started = true;
 
 
-    setTimeout(
-        randomEvent,
-        5000
+    showMessage(
+        `स्वागत है ${playerName}... ट्रेन चलने वाली है।`
     );
 }
 
 
 /* =========================
-   UI
+   THREE.JS INITIALIZATION
 ========================= */
 
-function updateUI() {
+function init3D() {
 
-    $("playerName").textContent =
-        game.playerName || "यात्री";
-
-
-    $("coachName").textContent =
-        " • Coach " + game.coach;
+    scene =
+        new THREE.Scene();
 
 
-    $("health").textContent =
-        Math.max(0, game.health);
+    scene.background =
+        new THREE.Color(0x020202);
 
 
-    $("fear").textContent =
-        Math.min(100, game.fear);
-
-
-    $("battery").textContent =
-        Math.max(0, game.battery);
-
-
-    $("doorText").textContent =
-        "COACH " + game.coach;
-
-
-    renderInventory();
-
-    renderMessages();
-}
-
-
-function setEvent(tag, title, text) {
-
-    $("eventTag").textContent = tag;
-
-    $("eventTitle").textContent = title;
-
-    $("eventText").textContent = text;
-
-    $("choices").innerHTML = "";
-
-    hideGhost();
-}
-
-
-function setMission(text) {
-
-    $("missionText").textContent =
-        text;
-}
-
-
-/* =========================
-   COACH MOVEMENT
-========================= */
-
-function moveCoach(direction) {
-
-    if (!$("gameScreen") ||
-        $("gameScreen").classList.contains("hidden")) {
-        return;
-    }
-
-
-    const newCoach =
-        game.coach + direction;
-
-
-    if (newCoach < 1) {
-
-        setEvent(
-            "दरवाज़ा",
-            "आगे नहीं जा सकते",
-            "तुम ट्रेन की शुरुआत पर हो। पीछे जाने का कोई रास्ता नहीं है।"
+    scene.fog =
+        new THREE.Fog(
+            0x020202,
+            2,
+            30
         );
 
-        return;
-    }
+
+    clock =
+        new THREE.Clock();
 
 
-    if (newCoach > 8) {
+    /* CAMERA */
 
-        setEvent(
-            "आख़िरी डिब्बा",
-            "रास्ता खत्म हो गया",
-            "इसके आगे कोई Coach नहीं है। लेकिन दूर से किसी के चलने की आवाज़ आ रही है…"
+    camera =
+        new THREE.PerspectiveCamera(
+            70,
+            window.innerWidth /
+            window.innerHeight,
+            0.05,
+            100
         );
 
-        game.fear += 5;
 
-        updateUI();
-
-        return;
-    }
-
-
-    game.coach = newCoach;
-
-    game.playedMinutes += 2;
-
-    game.battery =
-        Math.max(0, game.battery - 2);
-
-
-    updateUI();
-
-
-    if (game.coach === 3) {
-
-        setMission(
-            "Coach 5 में छुपा हुआ टिकट खोजो।"
-        );
-
-    }
-
-
-    if (game.coach === 5) {
-
-        setMission(
-            "पुराना टिकट खोजने के लिए Interact दबाओ।"
-        );
-
-    }
-
-
-    if (game.coach === 8) {
-
-        setMission(
-            "आख़िरी दरवाज़े तक पहुँचो।"
-        );
-
-    }
-
-
-    setEvent(
-        "Coach " + game.coach,
-        "तुम आगे बढ़ गए…",
-        getCoachDescription(game.coach)
+    camera.position.set(
+        0,
+        1.7,
+        7
     );
 
 
-    if (Math.random() < .45) {
+    /* RENDERER */
 
-        setTimeout(
-            randomEvent,
-            1500
-        );
-
-    }
-}
+    renderer =
+        new THREE.WebGLRenderer({
+            antialias: true
+        });
 
 
-/* =========================
-   COACH DESCRIPTIONS
-========================= */
+    renderer.setPixelRatio(
+        Math.min(
+            window.devicePixelRatio,
+            2
+        )
+    );
 
-function getCoachDescription(coach) {
 
-    const descriptions = {
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
 
-        1:
-            "कुछ यात्री चुपचाप बैठे हैं। एक बूढ़ा आदमी तुम्हें लगातार देख रहा है।",
 
-        2:
-            "यह डिब्बा लगभग खाली है। ऊपर वाली berth से किसी के साँस लेने की आवाज़ आ रही है।",
+    renderer.shadowMap.enabled =
+        true;
 
-        3:
-            "एक बच्चा खिड़की के पास बैठा है। वह बाहर नहीं, बल्कि काले शीशे में तुम्हारा प्रतिबिंब देख रहा है।",
 
-        4:
-            "लाइट बार-बार झपक रही है। हर बार अंधेरा होने पर सीटों की संख्या बदल जाती है।",
+    document.body.appendChild(
+        renderer.domElement
+    );
 
-        5:
-            "यहाँ हवा बहुत ठंडी है। एक सीट पर पुराना टिकट पड़ा हुआ दिखाई देता है।",
 
-        6:
-            "पूरा डिब्बा खाली है। लेकिन ऊपर की berth धीरे-धीरे हिल रही है।",
+    /* PLAYER */
 
-        7:
-            "फोन में अचानक network की एक line दिखाई देती है… फिर गायब हो जाती है।",
+    player = {
 
-        8:
-            "आख़िरी डिब्बा। सामने एक दरवाज़ा है जिस पर लिखा है — 'वापस मत जाना।'"
+        position:
+            new THREE.Vector3(
+                0,
+                1.7,
+                7
+            ),
+
+        rotation: 0,
+
+        speed: 3
+
     };
 
 
-    return descriptions[coach] ||
-        "डिब्बे में अजीब सन्नाटा है।";
+    /* LIGHT */
+
+    const ambient =
+        new THREE.HemisphereLight(
+            0x777777,
+            0x050505,
+            0.45
+        );
+
+
+    scene.add(ambient);
+
+
+    /* TRAIN */
+
+    createTrain();
+
+
+    /* FLASHLIGHT */
+
+    flashlight =
+        new THREE.SpotLight(
+            0xffffff,
+            8,
+            18,
+            Math.PI / 8,
+            0.5,
+            1
+        );
+
+
+    flashlight.position.set(
+        0,
+        1.7,
+        6.5
+    );
+
+
+    scene.add(flashlight);
+
+
+    camera.add(
+        flashlight
+    );
+
+
+    scene.add(camera);
+
+
+    /* EVENTS */
+
+    window.addEventListener(
+        "resize",
+        onResize
+    );
+
+
+    document.addEventListener(
+        "keydown",
+        keyDown
+    );
+
+
+    document.addEventListener(
+        "keyup",
+        keyUp
+    );
+
+
+    setupMobileControls();
+
+
+    animate();
 }
 
 
 /* =========================
-   INTERACT
+   CREATE TRAIN
+========================= */
+
+function createTrain() {
+
+    /* FLOOR */
+
+    const floorMaterial =
+        new THREE.MeshStandardMaterial({
+            color: 0x252525,
+            roughness: 0.9
+        });
+
+
+    const floor =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                5,
+                0.2,
+                30
+            ),
+            floorMaterial
+        );
+
+
+    floor.position.y =
+        -0.1;
+
+
+    floor.receiveShadow = true;
+
+    scene.add(floor);
+
+
+    /* CEILING */
+
+    const ceiling =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                5,
+                0.2,
+                30
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x181818
+            })
+        );
+
+
+    ceiling.position.y =
+        3.6;
+
+
+    scene.add(ceiling);
+
+
+    /* WALLS */
+
+    const wallMaterial =
+        new THREE.MeshStandardMaterial({
+            color: 0x303030,
+            roughness: 1
+        });
+
+
+    const leftWall =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                0.2,
+                3.6,
+                30
+            ),
+            wallMaterial
+        );
+
+
+    leftWall.position.set(
+        -2.5,
+        1.8,
+        0
+    );
+
+
+    scene.add(leftWall);
+
+
+    const rightWall =
+        leftWall.clone();
+
+
+    rightWall.position.x =
+        2.5;
+
+
+    scene.add(rightWall);
+
+
+    /* WINDOWS */
+
+    for (
+        let z = -13;
+        z <= 13;
+        z += 3
+    ) {
+
+        createWindow(
+            -2.38,
+            z
+        );
+
+        createWindow(
+            2.38,
+            z
+        );
+
+    }
+
+
+    /* BERTHS */
+
+    for (
+        let z = -12;
+        z <= 12;
+        z += 4
+    ) {
+
+        createBerth(
+            -1.7,
+            z
+        );
+
+        createBerth(
+            1.7,
+            z
+        );
+
+    }
+
+
+    /* LIGHTS */
+
+    for (
+        let z = -12;
+        z <= 12;
+        z += 4
+    ) {
+
+        const light =
+            new THREE.PointLight(
+                0xffeeee,
+                1.2,
+                5
+            );
+
+
+        light.position.set(
+            0,
+            3.1,
+            z
+        );
+
+
+        scene.add(light);
+
+    }
+
+
+    /* DOORS */
+
+    createDoor(
+        0,
+        -14.7
+    );
+
+
+    createDoor(
+        0,
+        14.7
+    );
+
+
+    /* SEATS */
+
+    for (
+        let z = -11;
+        z <= 11;
+        z += 4
+    ) {
+
+        createSeat(
+            -0.8,
+            z
+        );
+
+        createSeat(
+            0.8,
+            z
+        );
+
+    }
+
+}
+
+
+/* =========================
+   WINDOW
+========================= */
+
+function createWindow(
+    x,
+    z
+) {
+
+    const window =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                0.08,
+                1.3,
+                1.7
+            ),
+            new THREE.MeshBasicMaterial({
+                color: 0x02040a
+            })
+        );
+
+
+    window.position.set(
+        x,
+        2.15,
+        z
+    );
+
+
+    scene.add(window);
+
+}
+
+
+/* =========================
+   BERTH
+========================= */
+
+function createBerth(
+    x,
+    z
+) {
+
+    for (
+        let y = 1.1;
+        y <= 2.7;
+        y += 0.75
+    ) {
+
+        const bed =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    1.3,
+                    0.15,
+                    2.5
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0x555555
+                })
+            );
+
+
+        bed.position.set(
+            x,
+            y,
+            z
+        );
+
+
+        scene.add(bed);
+
+    }
+
+}
+
+
+/* =========================
+   SEAT
+========================= */
+
+function createSeat(
+    x,
+    z
+) {
+
+    const seat =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                0.9,
+                0.7,
+                1.2
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x292929
+            })
+        );
+
+
+    seat.position.set(
+        x,
+        0.35,
+        z
+    );
+
+
+    scene.add(seat);
+
+}
+
+
+/* =========================
+   DOOR
+========================= */
+
+function createDoor(
+    x,
+    z
+) {
+
+    const door =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                1.5,
+                2.8,
+                0.15
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x111111
+            })
+        );
+
+
+    door.position.set(
+        x,
+        1.4,
+        z
+    );
+
+
+    scene.add(door);
+
+}
+
+
+/* =========================
+   KEYBOARD
+========================= */
+
+function keyDown(event) {
+
+    keys[
+        event.key.toLowerCase()
+    ] = true;
+
+
+    if (
+        event.key.toLowerCase() === "e"
+    ) {
+
+        interact();
+
+    }
+
+
+    if (
+        event.key.toLowerCase() === "f"
+    ) {
+
+        toggleFlashlight();
+
+    }
+
+}
+
+
+function keyUp(event) {
+
+    keys[
+        event.key.toLowerCase()
+    ] = false;
+
+}
+
+
+/* =========================
+   MOVEMENT
+========================= */
+
+function updateMovement(
+    delta
+) {
+
+    if (!started) return;
+
+
+    const speed =
+        player.speed * delta;
+
+
+    if (keys["w"]) {
+
+        camera.translateZ(
+            -speed
+        );
+
+    }
+
+
+    if (keys["s"]) {
+
+        camera.translateZ(
+            speed
+        );
+
+    }
+
+
+    if (keys["a"]) {
+
+        camera.translateX(
+            -speed
+        );
+
+    }
+
+
+    if (keys["d"]) {
+
+        camera.translateX(
+            speed
+        );
+
+    }
+
+
+    /* KEEP PLAYER INSIDE TRAIN */
+
+    camera.position.x =
+        THREE.MathUtils.clamp(
+            camera.position.x,
+            -1.7,
+            1.7
+        );
+
+
+    camera.position.z =
+        THREE.MathUtils.clamp(
+            camera.position.z,
+            -13.5,
+            13.5
+        );
+
+
+    camera.position.y =
+        1.7;
+
+}
+
+
+/* =========================
+   INTERACTION
 ========================= */
 
 function interact() {
 
-    if ($("gameScreen").classList.contains("hidden")) {
-        return;
-    }
+    if (!started) return;
 
 
-    game.events++;
+    const distance =
+        camera.position.z;
 
 
-    /* Coach 5 clue */
+    if (
+        Math.abs(distance) > 12
+    ) {
 
-    if (game.coach === 5 &&
-        !game.items.includes("🎫 पुराना टिकट")) {
-
-        game.items.push(
-            "🎫 पुराना टिकट"
+        showMessage(
+            "दरवाज़ा बहुत पास है… लेकिन अभी बंद है।"
         );
 
-        game.clues++;
+        fear += 3;
 
-
-        setEvent(
-            "रहस्य",
-            "पुराना टिकट मिला",
-            "टिकट पर आज की तारीख नहीं है। उस पर 1998 लिखा है। लेकिन ट्रेन के बाहर अभी 2026 चल रहा है।"
-        );
-
-
-        setMission(
-            "अब Coach 7 में फोन चालू करो।"
-        );
-
-
-        updateUI();
+        updateStats();
 
         return;
     }
 
 
-    /* Coach 7 */
-
-    if (game.coach === 7) {
-
-        game.battery =
-            Math.max(0, game.battery - 5);
-
-        game.fear += 10;
+    fear += 2;
 
 
-        showGhost();
-
-
-        setEvent(
-            "फोन",
-            "अज्ञात संदेश",
-            "फोन की स्क्रीन अपने आप जलती है। संदेश आता है: “तुम्हारा नाम मुझे पता है, " +
-            game.playerName +
-            "…”"
-        );
-
-
-        if (
-            !game.messages.includes(
-                "अज्ञात नंबर: तुम्हारा नाम मुझे पता है।"
-            )
-        ) {
-
-            game.messages.push(
-                "अज्ञात नंबर: तुम्हारा नाम मुझे पता है।"
-            );
-
-        }
-
-
-        setMission(
-            "Coach 8 के आख़िरी दरवाज़े तक जाओ।"
-        );
-
-
-        updateUI();
-
-        return;
-    }
-
-
-    /* Coach 8 ending */
-
-    if (game.coach === 8) {
-
-        if (game.clues >= 1) {
-
-            trueEnding();
-
-        } else {
-
-            lostEnding();
-
-        }
-
-        return;
-    }
-
-
-    /* Normal interaction */
-
-    const actions = [
-
-        "तुमने सीट के नीचे देखा… वहाँ कुछ नहीं था।",
-
-        "खिड़की पर किसी ने अंदर से हाथ रखा था। तुमने हाथ हटाया तो निशान गायब हो गया।",
-
-        "ऊपर की berth खाली थी। फिर भी चादर किसी के लेटे होने की तरह दब रही थी।",
-
-        "दरवाज़े के पीछे से किसी बच्चे की हँसी सुनाई दी।",
-
-        "तुम्हें लगा किसी ने तुम्हारा नाम पुकारा।",
-
-        "ट्रेन अचानक धीमी हुई… फिर सामान्य गति से चलने लगी।"
-
-    ];
-
-
-    const text =
-        actions[
-            Math.floor(
-                Math.random() * actions.length
-            )
-        ];
-
-
-    game.fear += 4;
-
-
-    if (Math.random() < .25) {
-        game.health -= 5;
-    }
-
-
-    setEvent(
-        "जाँच",
-        "तुमने ध्यान से देखा…",
-        text
+    showMessage(
+        "तुमने आसपास देखा… कुछ अजीब महसूस हो रहा है।"
     );
 
 
-    updateUI();
+    updateStats();
+
+}
 
 
-    checkHealth();
+/* =========================
+   FLASHLIGHT
+========================= */
+
+function toggleFlashlight() {
+
+    if (battery <= 0) {
+
+        showMessage(
+            "🔦 टॉर्च की battery खत्म हो गई!"
+        );
+
+        return;
+    }
+
+
+    flashlightOn =
+        !flashlightOn;
+
+
+    flashlight.visible =
+        flashlightOn;
+
+
+    showMessage(
+        flashlightOn
+            ? "🔦 टॉर्च ON"
+            : "🔦 टॉर्च OFF"
+    );
+
 }
 
 
@@ -627,434 +821,380 @@ function interact() {
    RANDOM HORROR
 ========================= */
 
-function randomEvent() {
+let horrorTimer = 0;
+
+
+function horrorEvents(
+    delta
+) {
+
+    horrorTimer += delta;
+
 
     if (
-        $("gameScreen").classList.contains("hidden")
-    ) {
-        return;
-    }
+        horrorTimer < 12
+    ) return;
 
 
-    const events = [
+    horrorTimer = 0;
 
-        {
-            title: "किसी ने पीछे से पुकारा",
-            text:
-                `“${game.playerName}…” आवाज़ तुम्हारे ठीक पीछे से आई। लेकिन वहाँ कोई नहीं था।`
-        },
 
-        {
-            title: "लाइट बंद हो गई",
-            text:
-                "पूरा Coach पाँच सेकंड के लिए अंधेरे में डूब गया। अंधेरे में किसी के चलने की आवाज़ आई।"
-        },
+    const chance =
+        Math.random();
 
-        {
-            title: "खिड़की",
-            text:
-                "बारिश के बीच खिड़की पर एक चेहरा दिखाई दिया। ट्रेन पूरी गति से चल रही है… फिर वह चेहरा गायब हो गया।"
-        },
 
-        {
-            title: "घोषणा",
-            text:
-                "स्पीकर से आवाज़ आई — “अगला स्टेशन… अंतिम स्टेशन…” फिर speaker बंद हो गया।"
-        },
+    if (chance < 0.45) {
 
-        {
-            title: "खाली सीट",
-            text:
-                "तुमने सामने वाली सीट देखी। वह खाली थी। एक पल बाद वहाँ कोई बैठा था।"
-        }
+        fear += 8;
 
-    ];
 
-
-    const event =
-        events[
-            Math.floor(
-                Math.random() * events.length
-            )
-        ];
-
-
-    game.fear +=
-        game.difficulty === "nightmare"
-            ? 15
-            : 8;
-
-
-    showGhost();
-
-
-    setEvent(
-        "⚠️ अजीब घटना",
-        event.title,
-        event.text
-    );
-
-
-    updateUI();
-
-
-    setTimeout(
-        hideGhost,
-        3000
-    );
-
-
-    checkHealth();
-}
-
-
-/* =========================
-   GHOST
-========================= */
-
-function showGhost() {
-
-    $("ghost").classList.add("show");
-
-    $("eyes").classList.add("show");
-}
-
-
-function hideGhost() {
-
-    $("ghost").classList.remove("show");
-
-    $("eyes").classList.remove("show");
-}
-
-
-/* =========================
-   INVENTORY
-========================= */
-
-function openInventory() {
-
-    $("inventory").classList.remove(
-        "hidden"
-    );
-
-    renderInventory();
-}
-
-
-function renderInventory() {
-
-    const container =
-        $("inventoryItems");
-
-
-    if (!container) return;
-
-
-    container.innerHTML = "";
-
-
-    game.items.forEach(
-        function (item) {
-
-            const div =
-                document.createElement("div");
-
-
-            div.className = "item";
-
-            div.textContent = item;
-
-
-            container.appendChild(div);
-
-        }
-    );
-
-}
-
-
-/* =========================
-   PHONE
-========================= */
-
-function openPhone() {
-
-    $("phone").classList.remove(
-        "hidden"
-    );
-
-    renderMessages();
-}
-
-
-function renderMessages() {
-
-    const container =
-        $("messages");
-
-
-    if (!container) return;
-
-
-    container.innerHTML = "";
-
-
-    game.messages.forEach(
-        function (message) {
-
-            const div =
-                document.createElement("div");
-
-
-            div.className = "message";
-
-            div.textContent = message;
-
-
-            container.appendChild(div);
-
-        }
-    );
-
-}
-
-
-/* =========================
-   POPUPS
-========================= */
-
-function openPopup(id) {
-
-    $(id).classList.remove(
-        "hidden"
-    );
-}
-
-
-function closePopup(id) {
-
-    if ($(id)) {
-
-        $(id).classList.add(
-            "hidden"
-        );
-
-    }
-}
-
-
-/* =========================
-   SAVE
-========================= */
-
-function saveGame() {
-
-    localStorage.setItem(
-        "antimSafarSave",
-        JSON.stringify(game)
-    );
-
-
-    alert(
-        "💾 Game Save हो गया!"
-    );
-}
-
-
-/* =========================
-   LOAD
-========================= */
-
-function loadGame() {
-
-    const saved =
-        localStorage.getItem(
-            "antimSafarSave"
+        showMessage(
+            `तुम्हें लगा किसी ने ${playerName} नाम से पुकारा…`
         );
 
 
-    if (!saved) {
+        flashLights();
 
-        alert(
-            "कोई Save Game नहीं मिला।"
-        );
-
-        return;
     }
 
 
-    try {
+    else if (chance < 0.75) {
 
-        game =
-            JSON.parse(saved);
-
-
-        updateUI();
+        fear += 12;
 
 
-        hide("startScreen");
-
-        hide("storyScreen");
-
-        show("gameScreen");
-
-
-        setEvent(
-            "Game Loaded",
-            "सफ़र वापस शुरू हो गया",
-            "तुम उसी Coach में वापस आ गए हो जहाँ तुमने game save किया था।"
-        );
-
-
-        closePopup("settings");
-
-
-    } catch (error) {
-
-        alert(
-            "Save file खराब है।"
+        showMessage(
+            "👻 खिड़की के बाहर कुछ बहुत तेज़ी से गुज़रा…"
         );
 
     }
-}
 
 
-/* =========================
-   NEW GAME
-========================= */
+    else {
 
-function newGame() {
+        fear += 15;
 
-    const answer =
-        confirm(
-            "क्या तुम नई शुरुआत करना चाहते हो?"
+
+        showMessage(
+            "⚠️ पीछे से कदमों की आवाज़ आ रही है…"
         );
 
-
-    if (!answer) return;
-
-
-    localStorage.removeItem(
-        "antimSafarSave"
-    );
-
-
-    location.reload();
-}
-
-
-/* =========================
-   HEALTH
-========================= */
-
-function checkHealth() {
-
-    if (game.health <= 0) {
-
-        lostEnding();
-
-        return;
     }
 
 
-    if (game.fear >= 100) {
+    updateStats();
 
-        fearEnding();
+
+    if (fear >= 100) {
+
+        showMessage(
+            "😨 तुम्हारा डर बहुत बढ़ गया है..."
+        );
 
     }
-}
-
-
-/* =========================
-   ENDINGS
-========================= */
-
-function trueEnding() {
-
-    hide("gameScreen");
-
-    show("endingScreen");
-
-
-    $("endingTitle").textContent =
-        "🌅 तुम बच गए";
-
-
-    $("endingText").textContent =
-        `${game.playerName}, तुमने पुराना टिकट खोज लिया और आख़िरी दरवाज़े का रहस्य समझ लिया। ट्रेन सुबह एक सुनसान स्टेशन पर रुकी। दरवाज़ा खुला… और तुम बाहर निकल गए। पीछे मुड़कर देखा तो ट्रेन गायब थी।`;
-
-
-    $("endingStats").textContent =
-        `Coach: ${game.coach} • Clues: ${game.clues} • Fear: ${game.fear}`;
-
-}
-
-
-function lostEnding() {
-
-    hide("gameScreen");
-
-    show("endingScreen");
-
-
-    $("endingTitle").textContent =
-        "👻 तुम खो गए";
-
-
-    $("endingText").textContent =
-        `${game.playerName}, ट्रेन रुक गई। जब दरवाज़े खुले तो बाहर कोई स्टेशन नहीं था। सिर्फ धुंध थी। तुमने एक कदम बाहर रखा… और फिर ट्रेन हमेशा के लिए गायब हो गई।`;
-
-
-    $("endingStats").textContent =
-        `Coach: ${game.coach} • Fear: ${game.fear}`;
-
-}
-
-
-function fearEnding() {
-
-    hide("gameScreen");
-
-    show("endingScreen");
-
-
-    $("endingTitle").textContent =
-        "😨 डर ने जीत लिया";
-
-
-    $("endingText").textContent =
-        "तुम्हारा डर इतना बढ़ गया कि तुम्हें ट्रेन में मौजूद चीज़ें वास्तविक और भ्रम के बीच अलग दिखाई देना बंद हो गईं।";
-
-
-    $("endingStats").textContent =
-        `Fear: ${game.fear} • Health: ${game.health}`;
 
 }
 
 
 /* =========================
-   AUTO BATTERY
+   LIGHT FLICKER
 ========================= */
 
-setInterval(
-    function () {
+function flashLights() {
 
-        if (
-            $("gameScreen") &&
-            !$("gameScreen").classList.contains("hidden")
-        ) {
+    scene.traverse(
+        function (object) {
 
-            if (game.battery > 0) {
+            if (
+                object.isPointLight
+            ) {
 
-                game.battery--;
-
-                updateUI();
+                object.visible = false;
 
             }
 
         }
+    );
 
-    },
-    30000
-);
+
+    setTimeout(
+        function () {
+
+            scene.traverse(
+                function (object) {
+
+                    if (
+                        object.isPointLight
+                    ) {
+
+                        object.visible = true;
+
+                    }
+
+                }
+            );
+
+        },
+        350
+    );
+
+}
+
+
+/* =========================
+   STATS
+========================= */
+
+function updateStats() {
+
+    fear =
+        Math.min(
+            100,
+            Math.max(0, fear)
+        );
+
+
+    health =
+        Math.min(
+            100,
+            Math.max(0, health)
+        );
+
+
+    battery =
+        Math.min(
+            100,
+            Math.max(0, battery)
+        );
+
+
+    document.getElementById(
+        "health"
+    ).textContent = health;
+
+
+    document.getElementById(
+        "fear"
+    ).textContent = fear;
+
+
+    document.getElementById(
+        "battery"
+    ).textContent = battery;
+
+}
+
+
+/* =========================
+   MESSAGE
+========================= */
+
+let messageTimer;
+
+
+function showMessage(text) {
+
+    messageBox.textContent =
+        text;
+
+
+    clearTimeout(
+        messageTimer
+    );
+
+
+    messageTimer =
+        setTimeout(
+            function () {
+
+                messageBox.textContent =
+                    "";
+
+            },
+            5000
+        );
+
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+function setupMobileControls() {
+
+    holdButton(
+        "forward",
+        "w"
+    );
+
+    holdButton(
+        "backward",
+        "s"
+    );
+
+    holdButton(
+        "left",
+        "a"
+    );
+
+    holdButton(
+        "right",
+        "d"
+    );
+
+
+    document.getElementById(
+        "interact"
+    ).addEventListener(
+        "click",
+        interact
+    );
+
+
+    document.getElementById(
+        "flashlight"
+    ).addEventListener(
+        "click",
+        toggleFlashlight
+    );
+
+}
+
+
+function holdButton(
+    id,
+    key
+) {
+
+    const button =
+        document.getElementById(id);
+
+
+    button.addEventListener(
+        "touchstart",
+        function (event) {
+
+            event.preventDefault();
+
+            keys[key] = true;
+
+        }
+    );
+
+
+    button.addEventListener(
+        "touchend",
+        function (event) {
+
+            event.preventDefault();
+
+            keys[key] = false;
+
+        }
+    );
+
+
+    button.addEventListener(
+        "mousedown",
+        function () {
+
+            keys[key] = true;
+
+        }
+    );
+
+
+    button.addEventListener(
+        "mouseup",
+        function () {
+
+            keys[key] = false;
+
+        }
+    );
+
+
+    button.addEventListener(
+        "mouseleave",
+        function () {
+
+            keys[key] = false;
+
+        }
+    );
+
+}
+
+
+/* =========================
+   RESIZE
+========================= */
+
+function onResize() {
+
+    if (!camera || !renderer) {
+        return;
+    }
+
+
+    camera.aspect =
+        window.innerWidth /
+        window.innerHeight;
+
+
+    camera.updateProjectionMatrix();
+
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
+
+}
+
+
+/* =========================
+   GAME LOOP
+========================= */
+
+function animate() {
+
+    requestAnimationFrame(
+        animate
+    );
+
+
+    const delta =
+        Math.min(
+            clock.getDelta(),
+            0.05
+        );
+
+
+    updateMovement(delta);
+
+
+    horrorEvents(delta);
+
+
+    if (
+        flashlightOn &&
+        battery > 0
+    ) {
+
+        battery -=
+            delta * 0.15;
+
+    }
+
+
+    updateStats();
+
+
+    renderer.render(
+        scene,
+        camera
+    );
+
+}
