@@ -1,93 +1,306 @@
 <!DOCTYPE html>
 <html lang="hi">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>अंतिम सफ़र — 3D</title>
+
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>अंतिम सफ़र - Horror Express</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<div id="startScreen">
-    <div class="startBox">
-        <h1>अंतिम सफ़र</h1>
-        <p>THE LAST JOURNEY</p>
+    <!-- START SCREEN -->
 
-        <div class="line"></div>
+    <div id="startScreen">
 
-        <h2>एक 3D भारतीय हॉरर अनुभव</h2>
+        <div class="startPanel">
 
-        <input
-            id="playerName"
-            type="text"
-            maxlength="20"
-            placeholder="अपना नाम लिखें"
-        >
+            <div class="warning">⚠ CLASSIFIED NIGHT JOURNEY ⚠</div>
 
-        <button id="startButton">
-            🚂 सफ़र शुरू करें
-        </button>
+            <h1>अंतिम सफ़र</h1>
 
-        <div id="error"></div>
-
-        <small>
-            मोबाइल: स्क्रीन पर दिए controls इस्तेमाल करें<br>
-            PC: W A S D से चलें
-        </small>
-    </div>
-</div>
-
-
-<div id="gameUI" class="hidden">
-
-    <div id="topBar">
-        <span id="nameDisplay">यात्री</span>
-
-        <span>
-            ❤️ <b id="health">100</b>
-            &nbsp;&nbsp;
-            😨 <b id="fear">0</b>
-            &nbsp;&nbsp;
-            🔦 <b id="battery">100</b>
-        </span>
-    </div>
-
-
-    <div id="crosshair">+</div>
-
-
-    <div id="message">
-        ट्रेन में आपका स्वागत है...
-    </div>
-
-
-    <div id="mobileControls">
-
-        <div class="movePad">
-            <button id="forward">▲</button>
-
-            <div>
-                <button id="left">◀</button>
-                <button id="backward">▼</button>
-                <button id="right">▶</button>
+            <div class="englishTitle">
+                THE LAST JOURNEY
             </div>
+
+            <p class="storyIntro">
+                रात के 2:13 बजे तुम एक सुनसान स्टेशन पर ट्रेन में चढ़ते हो।
+                <br>
+                ट्रेन चलती है...
+                <br>
+                लेकिन कुछ देर बाद तुम्हें पता चलता है कि
+                <b>इस ट्रेन में तुम अकेले नहीं हो।</b>
+            </p>
+
+            <div class="nameBox">
+
+                <label>अपना नाम लिखें</label>
+
+                <input
+                    id="playerName"
+                    type="text"
+                    maxlength="20"
+                    placeholder="यहाँ नाम लिखें">
+
+            </div>
+
+            <button id="startButton">
+                🚆 सफ़र शुरू करें
+            </button>
+
+            <p id="startError"></p>
+
+            <div class="controlsInfo">
+
+                <b>PC:</b>
+                W A S D = चलना |
+                E = Interact |
+                F = Flashlight
+
+                <br><br>
+
+                <b>Mobile:</b>
+                नीचे दिए गए controls का इस्तेमाल करें
+
+            </div>
+
+            <div class="warningBottom">
+                ⚠ HEADPHONES RECOMMENDED ⚠
+            </div>
+
         </div>
 
-        <button id="interact">
-            E
-        </button>
+    </div>
 
-        <button id="flashlight">
-            🔦
-        </button>
+
+    <!-- GAME -->
+
+    <div id="game">
+
+        <div id="threeContainer"></div>
+
+
+        <!-- CINEMATIC EFFECTS -->
+
+        <div id="vignette"></div>
+
+        <div id="damageFlash"></div>
+
+        <div id="redOverlay"></div>
+
+        <div id="staticEffect"></div>
+
+        <div id="bloodOverlay"></div>
+
+
+        <!-- TOP HUD -->
+
+        <div id="hud">
+
+            <div class="hudLeft">
+
+                <div class="stat">
+                    ❤️
+                    <span id="health">100</span>
+                </div>
+
+                <div class="stat">
+                    😨
+                    <span id="fear">0</span>
+                </div>
+
+                <div class="stat">
+                    🔋
+                    <span id="battery">100</span>
+                </div>
+
+                <div class="stat">
+                    🏃
+                    <span id="stamina">100</span>
+                </div>
+
+            </div>
+
+
+            <div class="hudCenter">
+
+                <div id="clock">
+                    02:13 AM
+                </div>
+
+                <div id="coach">
+                    COACH S1
+                </div>
+
+            </div>
+
+
+            <div class="hudRight">
+
+                <div id="playerDisplay">
+                    Player
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- MISSION -->
+
+        <div id="missionBox">
+
+            <div class="missionTitle">
+                CURRENT OBJECTIVE
+            </div>
+
+            <div id="mission">
+                ट्रेन के अंदर जाओ...
+            </div>
+
+        </div>
+
+
+        <!-- MESSAGE -->
+
+        <div id="messageBox">
+            <div id="message"></div>
+        </div>
+
+
+        <!-- INTERACTION -->
+
+        <div id="interaction">
+            E
+        </div>
+
+
+        <!-- CROSSHAIR -->
+
+        <div id="crosshair">
+            +
+        </div>
+
+
+        <!-- MOBILE CONTROLS -->
+
+        <div id="mobileControls">
+
+            <div class="joystick">
+
+                <button id="upBtn">▲</button>
+
+                <div class="middleButtons">
+
+                    <button id="leftBtn">◀</button>
+
+                    <button id="downBtn">▼</button>
+
+                    <button id="rightBtn">▶</button>
+
+                </div>
+
+            </div>
+
+
+            <div class="actionButtons">
+
+                <button id="flashButton">
+                    🔦
+                </button>
+
+                <button id="interactButton">
+                    E
+                </button>
+
+                <button id="runButton">
+                    🏃
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- PHONE -->
+
+        <div id="phone">
+
+            <div class="phoneTop">
+                NO SIGNAL
+            </div>
+
+            <div id="phoneTime">
+                02:13
+            </div>
+
+            <div id="phoneMessage">
+                कोई संदेश नहीं...
+            </div>
+
+            <button id="closePhone">
+                CLOSE
+            </button>
+
+        </div>
+
+
+        <!-- STORY -->
+
+        <div id="storyScreen">
+
+            <div id="storyText"></div>
+
+        </div>
+
+
+        <!-- CLIMAX -->
+
+        <div id="climaxScreen">
+
+            <div class="climaxTitle">
+                ⚠ RUN ⚠
+            </div>
+
+            <div id="climaxText">
+                वह तुम्हारे पीछे है...
+            </div>
+
+            <div class="climaxTimer">
+                <span id="climaxCounter">30</span>
+            </div>
+
+        </div>
+
+
+        <!-- ENDING -->
+
+        <div id="endingScreen">
+
+            <div id="endingTitle">
+                THE END
+            </div>
+
+            <div id="endingText"></div>
+
+            <button id="restartButton">
+                🔄 फिर से खेलें
+            </button>
+
+        </div>
 
     </div>
 
-</div>
 
+    <!-- THREE.JS -->
 
-<script type="module" src="script.js"></script>
+    <script type="module" src="script.js"></script>
 
 </body>
+
 </html>
